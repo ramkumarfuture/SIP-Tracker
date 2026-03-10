@@ -1,0 +1,2619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SIP HQ">
+<meta name="theme-color" content="#060810">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>RAM — SIP Command Centre</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  window._fbModules = { initializeApp, getFirestore, doc, getDoc, setDoc, collection, getDocs };
+</script>
+<style>
+:root{
+  --bg:#060810;--surface:#0d1117;--surface2:#141920;--surface3:#1a2230;
+  --border:#1e2730;--border2:#253040;
+  --gold:#f0a830;--gold2:#ffcc66;--gold-dim:rgba(240,168,48,0.12);--gold-glow:rgba(240,168,48,0.25);
+  --green:#22c55e;--green-dim:rgba(34,197,94,0.1);
+  --red:#ef4444;--red-dim:rgba(239,68,68,0.1);
+  --blue:#3b82f6;--blue-dim:rgba(59,130,246,0.1);
+  --amber:#f59e0b;--purple:#a855f7;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#4a5568;
+  --radius:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(240,168,48,0.02)1px,transparent 1px),linear-gradient(90deg,rgba(240,168,48,0.02)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 20px 120px}
+
+/* NAV TABS */
+.nav-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:28px;overflow-x:auto}
+.nav-tab{padding:12px 20px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none}
+.nav-tab:hover{color:var(--text2);border-bottom-color:var(--border2)}
+.nav-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-pane{display:none}.tab-pane.active{display:block}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 0 0;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-mark{width:38px;height:38px;background:var(--gold);border-radius:6px;display:grid;place-items:center;font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--bg)}
+.logo-text{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;color:var(--text)}
+.logo-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.live-badge{display:flex;align-items:center;gap:6px;background:var(--green-dim);border:1px solid rgba(34,197,94,.25);padding:5px 12px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);letter-spacing:.1em}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.date-display{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)}
+.btn-email-setup{background:transparent;border:1px solid rgba(59,130,246,.4);color:var(--blue);padding:6px 14px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;letter-spacing:.08em}
+.btn-email-setup:hover{background:var(--blue-dim)}
+
+/* STAT STRIP */
+.stat-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold)}
+.stat-card:hover{border-color:var(--border2)}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.stat-value{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--gold2);line-height:1;margin-bottom:4px}
+.stat-sub{font-size:12px;color:var(--text2)}
+
+/* SECTION */
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin:28px 0 16px;flex-wrap:wrap;gap:10px}
+.sec-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.sec-title span{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:.15em;font-weight:400}
+.sec-line{flex:1;height:1px;background:var(--border);margin-left:16px}
+
+/* SIP TABLE */
+.sip-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto;margin-bottom:28px}
+.sip-table{width:100%;border-collapse:collapse;min-width:900px}
+.sip-table thead tr{background:var(--surface2);border-bottom:1px solid var(--border2)}
+.sip-table th{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);padding:12px 14px;text-align:left;white-space:nowrap}
+.sip-table td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.sip-table tr:last-child td{border-bottom:none}
+.sip-table tbody tr{transition:background .12s}
+.sip-table tbody tr:hover{background:rgba(255,255,255,.02)}
+.t-sym{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--gold)}
+.t-nm{font-size:11px;color:var(--text2)}.t-sc{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)}
+.status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid;cursor:pointer}
+.sp-a{background:var(--green-dim);color:var(--green);border-color:rgba(34,197,94,.25)}
+.sp-p{background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.25)}
+.sp-due{background:rgba(240,168,48,.15);color:var(--gold);border-color:rgba(240,168,48,.4);animation:glow-pulse 1.5s infinite}
+@keyframes glow-pulse{0%,100%{box-shadow:0 0 0 0 rgba(240,168,48,0)}50%{box-shadow:0 0 10px 2px rgba(240,168,48,.3)}}
+.rn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600}
+.r-l{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.r-m{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
+.r-h{background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+.ab{display:flex;gap:5px;flex-wrap:wrap}
+.bsm{padding:5px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;cursor:pointer;border:1px solid;transition:all .15s;font-weight:600;text-transform:uppercase;white-space:nowrap}
+.bn{background:var(--blue-dim);color:var(--blue);border-color:rgba(59,130,246,.3)}.bn:hover{background:rgba(59,130,246,.2)}
+.bp{background:transparent;color:var(--amber);border-color:rgba(245,158,11,.3)}.bp:hover{background:rgba(245,158,11,.1)}
+.br{background:transparent;color:var(--red);border-color:rgba(239,68,68,.3)}.br:hover{background:var(--red-dim)}
+.b-log{background:rgba(34,197,94,.1);color:var(--green);border-color:rgba(34,197,94,.3)}.b-log:hover{background:rgba(34,197,94,.2)}
+.amt-c{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--text)}
+.cap-tag{font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 6px;border-radius:2px;border:1px solid}
+.cap-L{color:#f59e0b;border-color:#f59e0b44}.cap-M{color:#3b82f6;border-color:#3b82f644}.cap-S{color:#a855f7;border-color:#a855f744}.cap-X{color:#ef4444;border-color:#ef444444}
+
+/* LOG ENTRY MODAL */
+.log-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:20px 24px}
+.log-form .full{grid-column:1/-1}
+.form-group label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px}
+.form-input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--gold)}
+.form-input::placeholder{color:var(--text3)}
+.calc-preview{background:var(--bg);border:1px solid rgba(240,168,48,.2);border-radius:6px;padding:12px 14px;margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8}
+.calc-preview span{color:var(--gold)}
+
+/* PORTFOLIO / GROWTH TAB */
+.portfolio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:28px}
+.portfolio-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .2s}
+.portfolio-card:hover{border-color:var(--border2)}
+.pc-header{padding:14px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.pc-sym{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--gold)}
+.pc-name{font-size:11px;color:var(--text2);margin-top:1px}
+.pc-pnl{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600}
+.pc-pnl.pos{color:var(--green)}.pc-pnl.neg{color:var(--red)}.pc-pnl.zero{color:var(--text3)}
+.pc-body{padding:14px 16px}
+.pc-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px}
+.pc-row .lbl{color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em}
+.pc-row .val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)}
+.pc-row .val.gold{color:var(--gold)}
+.pc-chart{height:60px;margin-top:8px;position:relative}
+.pc-chart canvas{width:100%!important;height:60px!important}
+.pc-no-data{display:flex;align-items:center;justify-content:center;height:60px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);border:1px dashed var(--border);border-radius:4px;letter-spacing:.1em}
+.pc-log-count{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-top:6px}
+
+/* GRAND SUMMARY */
+.grand-summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:28px}
+.gs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:20px}
+.gs-cell .lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.gs-cell .val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--gold2)}
+.gs-cell .sub{font-size:12px;color:var(--text2);margin-top:4px}
+.big-chart-wrap{height:200px;position:relative;margin-top:16px}
+
+/* TRANSACTION LOG */
+.txn-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto;margin-bottom:28px}
+.txn-table{width:100%;border-collapse:collapse;min-width:800px}
+.txn-table thead tr{background:var(--surface2);border-bottom:1px solid var(--border2)}
+.txn-table th{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);padding:10px 14px;text-align:left}
+.txn-table td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.txn-table tr:last-child td{border-bottom:none}
+.txn-table tbody tr:hover{background:rgba(255,255,255,.02)}
+.txn-sym{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--gold)}
+.txn-empty{padding:40px;text-align:center;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.08em}
+
+/* ALERT PANEL */
+.alert-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:28px;overflow:hidden}
+.alert-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px}
+.alert-header-left{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text2)}
+.btn-scan{background:var(--gold);color:var(--bg);border:none;padding:8px 18px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.08em;cursor:pointer;transition:all .2s}
+.btn-scan:hover{background:var(--gold2);transform:translateY(-1px)}.btn-scan:disabled{background:var(--border);color:var(--text3);cursor:not-allowed;transform:none}
+#alertFeed{max-height:380px;overflow-y:auto}
+#alertFeed::-webkit-scrollbar{width:4px}#alertFeed::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.alert-item{display:flex;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;animation:sIn .3s ease both}
+.alert-item:hover{background:rgba(255,255,255,.02)}.alert-item:last-child{border-bottom:none}
+@keyframes sIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.a-sev{width:3px;border-radius:2px;flex-shrink:0;align-self:stretch;min-height:40px}
+.sv-c{background:var(--red)}.sv-w{background:var(--amber)}.sv-i{background:var(--blue)}.sv-o{background:var(--green)}
+.a-body{flex:1}.a-meta{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap}
+.a-tick{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--gold);background:var(--gold-dim);padding:1px 7px;border-radius:3px}
+.a-type{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:2px}
+.t-sell{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.t-hold{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.t-buy{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.t-watch{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(59,130,246,.25)}
+.a-time{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-left:auto}
+.a-head{font-size:13.5px;color:var(--text);line-height:1.4;margin-bottom:4px}
+.a-act{font-size:12px;color:var(--text2);font-style:italic}
+.a-empty{padding:40px;text-align:center;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.08em}
+
+/* TIMELINE */
+.tl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:28px}
+.tl-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;transition:all .2s;cursor:pointer;position:relative}
+.tl-card:hover{border-color:var(--gold);transform:translateY(-2px)}
+.tl-today{border-color:var(--gold);background:var(--gold-dim)}
+.tl-logged{border-color:var(--green)!important;background:rgba(34,197,94,.05)!important}
+.tl-overdue{border-color:var(--red)!important;background:var(--red-dim)!important}
+.tl-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.1em;margin-bottom:6px}
+.tl-tick{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:2px}
+.tl-amt{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)}
+.today-tag{display:inline-block;background:var(--gold);color:var(--bg);font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;padding:1px 6px;border-radius:2px;margin-left:6px;vertical-align:middle;letter-spacing:.1em}
+.logged-tag{display:inline-block;background:var(--green);color:var(--bg);font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;padding:1px 6px;border-radius:2px;margin-left:6px;vertical-align:middle}
+.overdue-tag{display:inline-block;background:var(--red);color:#fff;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;padding:1px 6px;border-radius:2px;margin-left:6px;vertical-align:middle}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(6,8,16,.92);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(6px)}
+.modal-overlay.active{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:580px;width:95%;max-height:90vh;overflow-y:auto;transform:scale(.95) translateY(10px);transition:transform .25s;box-shadow:0 40px 80px rgba(0,0,0,.8)}
+.modal-overlay.active .modal{transform:scale(1) translateY(0)}
+.modal-wide{max-width:720px}
+.modal-top{padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start}
+.modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+.modal-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.1em;margin-top:2px}
+.modal-close{background:none;border:1px solid var(--border2);color:var(--text2);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;display:grid;place-items:center;transition:all .15s;flex-shrink:0}
+.modal-close:hover{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.modal-body{padding:20px 24px}
+.modal-btns{display:flex;gap:10px;padding:14px 24px;border-top:1px solid var(--border)}
+.btn-dis{flex:1;background:transparent;border:1px solid var(--border2);color:var(--text2);padding:10px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;transition:all .15s}
+.btn-dis:hover{border-color:var(--text2);color:var(--text)}
+.btn-act{flex:2;background:var(--gold);border:none;color:var(--bg);padding:10px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.08em;transition:all .15s}
+.btn-act:hover{background:var(--gold2)}
+.btn-act-g{background:var(--green);}.btn-act-g:hover{background:#4ade80}
+.btn-act-r{background:var(--red)}.btn-act-r:hover{background:#f87171}
+
+/* REMINDER OVERLAY */
+.reminder-overlay{position:fixed;inset:0;background:rgba(6,8,16,.97);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(12px)}
+.reminder-overlay.active{opacity:1;pointer-events:all}
+.reminder-box{background:var(--surface);border:2px solid var(--gold);border-radius:16px;padding:32px;max-width:480px;width:95%;text-align:center;box-shadow:0 0 60px rgba(240,168,48,.3),0 40px 80px rgba(0,0,0,.8);animation:remIn .4s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes remIn{from{transform:scale(.8) translateY(20px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.rem-icon{font-size:48px;margin-bottom:16px;animation:bounce 1s ease infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.rem-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--gold);margin-bottom:8px}
+.rem-body{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:24px}
+.rem-stock{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--gold2);display:block;margin:8px 0}
+.rem-amount{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:var(--text);display:block;margin-bottom:8px}
+.rem-btns{display:flex;gap:10px}
+.rem-btn-log{flex:2;background:var(--gold);color:var(--bg);border:none;padding:14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.08em}
+.rem-btn-log:hover{background:var(--gold2);transform:translateY(-2px)}
+.rem-btn-snooze{flex:1;background:transparent;color:var(--text2);border:1px solid var(--border2);padding:14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;transition:all .2s}
+.rem-btn-snooze:hover{border-color:var(--text2);color:var(--text)}
+
+/* REPLACE */
+.rep-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.rep-opt{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;transition:all .2s}
+.rep-opt:hover,.rep-opt.sel{border-color:var(--gold);background:var(--gold-dim)}
+.ro-t{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--gold);margin-bottom:3px}
+.ro-n{font-size:12px;color:var(--text2);margin-bottom:6px}
+.ro-w{font-size:11px;color:var(--text3);font-style:italic;line-height:1.4}
+
+/* SPINNER TOAST */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast-c{position:fixed;bottom:24px;right:24px;z-index:3000;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:12px 16px;font-size:13px;max-width:340px;animation:toastIn .3s ease both;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;align-items:flex-start;gap:10px}
+.toast.critical{border-color:var(--red);border-left:3px solid var(--red)}.toast.warning{border-color:var(--amber);border-left:3px solid var(--amber)}.toast.success{border-color:var(--green);border-left:3px solid var(--green)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* EMAIL SETUP */
+.email-setup-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.email-status{font-family:'JetBrains Mono',monospace;font-size:11px;display:flex;align-items:center;gap:8px}
+
+/* PLANNER (collapsed) */
+.planner{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:28px}
+.planner-head{background:var(--surface2);padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.planner-head-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.planner-toggle{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;letter-spacing:.1em}
+.planner-body{padding:20px}
+.planner-controls{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+.ctrl-group label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px}
+.ctrl-slider-wrap{display:flex;align-items:center;gap:10px}
+.ctrl-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--border2);border-radius:2px;outline:none;cursor:pointer}
+.ctrl-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);cursor:pointer;border:2px solid var(--bg);box-shadow:0 0 0 2px var(--gold)}
+.ctrl-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--gold2);min-width:72px;text-align:right}
+.sip-result-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.res-cell{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px 14px;text-align:center}
+.res-cell .rl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.res-cell .rv{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--gold2)}
+.scenario-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.sc-card{background:var(--bg);border:2px solid var(--border);border-radius:var(--radius);padding:14px;cursor:pointer;transition:all .2s;position:relative}
+.sc-card:hover{border-color:var(--border2);transform:translateY(-1px)}.sc-card.rec::after{content:'RECOMMENDED';position:absolute;top:-1px;right:10px;background:var(--green);color:var(--bg);font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;padding:2px 6px;border-radius:0 0 4px 4px;letter-spacing:.1em}
+.sc-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:4px}
+.sc-sip{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);margin-bottom:4px}
+.sc-corpus{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:4px}
+.sc-corpus.good{color:var(--green)}.sc-corpus.ok{color:var(--amber)}.sc-corpus.low{color:var(--red)}
+.sc-detail{font-size:11px;color:var(--text3);line-height:1.4}
+.proj-bars{display:flex;gap:4px;align-items:flex-end;height:120px;margin-top:12px}
+.proj-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.proj-bar-pair{flex:1;width:100%;display:flex;gap:2px;align-items:flex-end}
+.proj-bar{width:50%;border-radius:3px 3px 0 0;min-height:3px;transition:height .8s cubic-bezier(.34,1.56,.64,1)}
+.pb-eq{background:linear-gradient(to top,var(--gold),var(--gold2))}
+.pb-gd{background:linear-gradient(to top,#8a6000,#c4900a)}
+.proj-yr{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);text-align:center}
+.proj-tot{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--gold);text-align:center}
+.honest-box{background:var(--bg);border:1px solid rgba(240,168,48,.3);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px}
+.honest-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.honest-body{font-size:13px;color:var(--text2);line-height:1.7}
+.honest-body strong{color:var(--text)}.honest-body .hl{color:var(--gold);font-weight:600}.honest-body .warn{color:var(--amber)}.honest-body .good{color:var(--green)}
+
+/* CA REVIEW ITEMS */
+.ca-review-item{display:flex;align-items:flex-start;gap:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;transition:border-color .2s}
+.ca-review-item:hover{border-color:var(--border2)}
+.ca-review-item.checked{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.04)}
+.ca-review-cb{width:18px;height:18px;accent-color:var(--green);cursor:pointer;flex-shrink:0;margin-top:2px}
+.ca-review-icon{font-size:20px;flex-shrink:0;line-height:1}
+.ca-review-body{flex:1}
+.ca-review-sym{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--gold);margin-bottom:2px}
+.ca-review-main{font-size:13px;color:var(--text);font-weight:500;margin-bottom:4px}
+.ca-review-detail{font-size:12px;color:var(--text2);line-height:1.5}
+.ca-review-impact{font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:6px;padding:6px 10px;border-radius:4px;display:inline-block}
+.ca-review-impact.div{background:rgba(34,197,94,.1);color:var(--green)}
+.ca-review-impact.bon{background:rgba(59,130,246,.1);color:var(--blue)}
+.ca-review-impact.spl{background:rgba(245,158,11,.1);color:var(--amber)}
+.ca-review-already{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-top:4px;letter-spacing:.06em}
+
+/* CA CORPORATE ACTION TYPE BUTTONS */
+.ca-type-btn{flex:1;padding:10px 14px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.06em;cursor:pointer;border:1px solid var(--border2);background:var(--bg);color:var(--text3);transition:all .2s}
+.ca-type-btn:hover{border-color:var(--gold);color:var(--gold)}
+.ca-type-btn.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold2)}
+/* CA event badge colors */
+.ca-div{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);padding:2px 8px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.08em}
+.ca-bon{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.3);padding:2px 8px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.08em}
+.ca-spl{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.3);padding:2px 8px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.08em}
+/* CA per-stock card extras */
+.ca-event-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.ca-event-row:last-child{border-bottom:none}
+.ca-event-icon{font-size:16px;width:24px;text-align:center;flex-shrink:0;margin-top:1px}
+.ca-event-detail .d{color:var(--text2);line-height:1.5}
+.ca-event-detail .meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:2px}
+
+@media(max-width:900px){.stat-strip{grid-template-columns:repeat(3,1fr)}.scenario-cards{grid-template-columns:1fr}.planner-controls{grid-template-columns:1fr}.sip-result-bar{grid-template-columns:repeat(2,1fr)}.gs-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.stat-strip{grid-template-columns:repeat(2,1fr)}.rep-grid{grid-template-columns:1fr}.log-form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-mark">R</div>
+    <div>
+      <div class="logo-text">RAM — SIP COMMAND CENTRE</div>
+      <div class="logo-sub">Portfolio Tracker · Retire at 60 · 2026–2045</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-email-setup" onclick="openEmailSetup()">📧 Email Reminders</button>
+    <button class="btn-email-setup" id="btnSound" onclick="testSound()" style="border-color:rgba(240,168,48,.4);color:var(--gold)">🔔 Test Sound</button>
+    <button class="btn-email-setup" id="btnPrices" onclick="openPriceUpdateModal()" style="border-color:rgba(240,168,48,.4);color:var(--gold)">📶 Update Prices</button>
+    <div class="live-badge"><div class="live-dot"></div><span id="priceStatus">PRICES LOADED</span></div>
+    <div class="date-display" id="liveClock"></div>
+  </div>
+</div>
+
+<!-- PRICE TICKER STRIP -->
+<div id="priceTicker" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;overflow:hidden;position:relative">
+  <div style="display:flex;align-items:center;gap:16px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none" id="tickerInner"></div>
+  <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)" id="priceLastUpdated"></div>
+</div>
+
+<!-- PORTFOLIO SWITCHER -->
+<div id="portfolioSwitcher" style="display:flex;align-items:center;gap:0;margin-bottom:0;border-bottom:2px solid var(--border);padding-bottom:0">
+  <button id="pswBtn-ram" onclick="switchPortfolio('ram')" style="padding:10px 24px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;border-bottom:3px solid var(--gold);color:var(--gold);cursor:pointer;margin-bottom:-2px;transition:all .2s">
+    👨‍⚕️ RAM
+  </button>
+  <button id="pswBtn-wife" onclick="switchPortfolio('wife')" style="padding:10px 24px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;border-bottom:3px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-2px;transition:all .2s">
+    👩‍⚕️ WIFE
+  </button>
+  <div id="activePortfolioLabel" style="margin-left:16px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.08em">RAM'S PORTFOLIO · ₹2.00L/mo · Growth-Aggressive</div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+    <div id="familyCorpus" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)"></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+  <button class="nav-tab" onclick="switchTab('portfolio')">📈 Portfolio & Growth</button>
+  <button class="nav-tab" onclick="switchTab('transactions')">📋 Transaction Log</button>
+  <button class="nav-tab" onclick="switchTab('alerts')">🚨 Intelligence Alerts</button>
+  <button class="nav-tab" onclick="switchTab('corporate')">🏛 Corporate Actions</button>
+  <button class="nav-tab" onclick="switchTab('planner')">🎯 Goal Planner</button>
+</div>
+
+<!-- ══ TAB: DASHBOARD ══ -->
+<div id="tab-dashboard" class="tab-pane active">
+
+  <div class="stat-strip">
+    <div class="stat-card"><div class="stat-label">Total Invested</div><div class="stat-value" id="sTotalInvested">₹30.00L</div><div class="stat-sub" id="sTotalSub">Base corpus</div></div>
+    <div class="stat-card"><div class="stat-label">Current Value</div><div class="stat-value" id="sCurrentValue">₹30.00L</div><div class="stat-sub" id="sValueSub">Log SIPs to track</div></div>
+    <div class="stat-card"><div class="stat-label">Total P&L</div><div class="stat-value" id="sPnL" style="color:var(--text3)">₹0</div><div class="stat-sub" id="sPnLSub">+0.00%</div></div>
+    <div class="stat-card"><div class="stat-label">Monthly SIP</div><div class="stat-value" id="sMonthSip">₹1.25L</div><div class="stat-sub">10 stocks · equity</div></div>
+    <div class="stat-card"><div class="stat-label">Next SIP Due</div><div class="stat-value" id="sNextSip" style="font-size:15px">—</div><div class="stat-sub" id="sNextSipSub">Loading...</div></div>
+  </div>
+
+  <div class="sec-head">
+    <div class="sec-title">📅 SIP Schedule <span>CLICK LOG ✏️ TO RECORD EACH SIP</span></div>
+    <div class="sec-line"></div>
+  </div>
+  <div class="sip-table-wrap">
+    <table class="sip-table">
+      <thead><tr><th>#</th><th>Stock</th><th>Cap</th><th>Monthly ₹</th><th>SIP Day</th><th>Next Due</th><th>Avg Cost</th><th>Total Units</th><th>Status</th><th>Risk</th><th>Actions</th></tr></thead>
+      <tbody id="sipBody"></tbody>
+    </table>
+  </div>
+
+  <div class="sec-head">
+    <div class="sec-title">🗓 SIP Calendar <span>NEXT 30 DAYS</span></div>
+    <div class="sec-line"></div>
+  </div>
+  <div class="tl-grid" id="tlGrid"></div>
+
+</div>
+
+<!-- ══ TAB: PORTFOLIO ══ -->
+<div id="tab-portfolio" class="tab-pane">
+
+  <div class="grand-summary">
+    <div class="gs-grid">
+      <div class="gs-cell"><div class="lbl">Total Invested</div><div class="val" id="gs-invested">₹30.00L</div><div class="sub">Base + all SIPs logged</div></div>
+      <div class="gs-cell"><div class="lbl">Current Value</div><div class="val" id="gs-value">₹30.00L</div><div class="sub">At current prices</div></div>
+      <div class="gs-cell"><div class="lbl">Total Gain / Loss</div><div class="val" id="gs-pnl" style="color:var(--text3)">₹0</div><div class="sub" id="gs-pnl-pct">+0.00% overall</div></div>
+      <div class="gs-cell"><div class="lbl">SIP Transactions</div><div class="val" id="gs-txns">0</div><div class="sub">Logged entries</div></div>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">📈 Portfolio Value Over Time</div>
+    <div class="big-chart-wrap"><canvas id="bigChart"></canvas></div>
+  </div>
+
+  <div class="sec-head">
+    <div class="sec-title">🏦 Per-Stock Holdings <span>LIVE P&L</span></div>
+    <div class="sec-line"></div>
+    <button class="bsm b-log" style="margin-left:12px" onclick="openLogModal()">✏️ Log New SIP</button>
+  </div>
+  <div class="portfolio-grid" id="portfolioGrid"></div>
+
+</div>
+
+<!-- ══ TAB: TRANSACTIONS ══ -->
+<div id="tab-transactions" class="tab-pane">
+  <div class="sec-head">
+    <div class="sec-title">📋 All SIP Transactions <span>FULL HISTORY</span></div>
+    <div class="sec-line"></div>
+    <div style="display:flex;gap:8px">
+      <button class="bsm b-log" onclick="openLogModal()">✏️ Log New SIP</button>
+      <button class="bsm br" onclick="clearAllTxns()">🗑 Clear All</button>
+    </div>
+  </div>
+  <div class="txn-table-wrap">
+    <table class="txn-table">
+      <thead><tr><th>Date</th><th>Stock</th><th>Amount Paid</th><th>Market Price</th><th>Units Bought</th><th>Avg Cost</th><th>Current Price</th><th>P&L</th><th>Notes</th><th></th></tr></thead>
+      <tbody id="txnBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ TAB: ALERTS ══ -->
+<div id="tab-alerts" class="tab-pane">
+  <div class="alert-panel">
+    <div class="alert-header">
+      <div class="alert-header-left"><span>📡</span><span>Intelligence Monitor — All 10 Holdings</span></div>
+      <button class="btn-scan" id="btnScan" onclick="checkAllNews()">🔍 Scan All 10 Stocks</button>
+    </div>
+    <div id="alertFeed"><div class="a-empty">Click "Scan All 10 Stocks" to get AI-powered alerts for every holding.</div></div>
+  </div>
+</div>
+
+<!-- ══ TAB: CORPORATE ACTIONS ══ -->
+<div id="tab-corporate" class="tab-pane">
+
+  <!-- Summary Strip -->
+  <div class="stat-strip" style="grid-template-columns:repeat(4,1fr)">
+    <div class="stat-card" style="--accent:var(--green)"><div class="stat-label">Total Dividends</div><div class="stat-value" id="ca-div-total" style="color:var(--green)">₹0</div><div class="stat-sub">Cash received</div></div>
+    <div class="stat-card"><div class="stat-label">Bonus Shares</div><div class="stat-value" id="ca-bonus-total" style="color:var(--blue)">0</div><div class="stat-sub">Free units received</div></div>
+    <div class="stat-card"><div class="stat-label">Splits Applied</div><div class="stat-value" id="ca-split-total" style="color:var(--amber)">0</div><div class="stat-sub">Stock split events</div></div>
+    <div class="stat-card"><div class="stat-label">Total CA Events</div><div class="stat-value" id="ca-count-total">0</div><div class="stat-sub">All corporate actions</div></div>
+  </div>
+
+  <!-- AI Fetch Panel -->
+  <div id="caFetchPanel" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px">🤖 AI Auto-Fetch Corporate Actions</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">Scans all 10 stocks for recent dividends, bonus issues &amp; stock splits — you review &amp; confirm before saving</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-scan" id="btnFetchCA" onclick="fetchAllCA()" style="padding:8px 16px;font-size:11px">🤖 Fetch Corporate Actions</button>
+        <button class="bsm b-log" style="white-space:nowrap;padding:7px 12px" onclick="openCAModal()">＋ Add Manually</button>
+      </div>
+    </div>
+    <!-- Fetch progress bar (hidden initially) -->
+    <div id="caFetchProgress" style="display:none;margin-top:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)" id="caFetchStatus"><span class="spinner"></span> Scanning...</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)" id="caFetchCount">0/10</span>
+      </div>
+      <div style="height:3px;background:var(--border2);border-radius:2px;overflow:hidden">
+        <div id="caFetchBar" style="height:100%;width:0%;background:var(--gold);border-radius:2px;transition:width .4s ease"></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px" id="caFetchTickers"></div>
+    </div>
+  </div>
+
+  <!-- AI Review Panel (hidden until fetch completes) -->
+  <div id="caReviewPanel" style="display:none;background:var(--surface);border:1px solid rgba(240,168,48,.3);border-radius:var(--radius);margin-bottom:20px;overflow:hidden">
+    <div style="background:var(--gold-dim);border-bottom:1px solid rgba(240,168,48,.2);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--gold2)">✅ Review &amp; Confirm Corporate Actions</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:2px">AI found the following events — tick what applies to you and click Import</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-dis" style="padding:8px 14px;font-size:11px" onclick="dismissCAReview()">✕ Dismiss</button>
+        <button class="btn-act btn-act-g" style="padding:8px 16px;font-size:11px" onclick="importCheckedCA()">✓ Import Selected</button>
+      </div>
+    </div>
+    <div id="caReviewList" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+
+  <div class="sec-head">
+    <div class="sec-title">🏛 Corporate Actions <span>DIVIDENDS · BONUS · SPLITS</span></div>
+    <div class="sec-line"></div>
+  </div>
+
+  <!-- Per-stock CA cards -->
+  <div class="portfolio-grid" id="caStockGrid"></div>
+
+  <!-- Full CA log -->
+  <div class="sec-head" style="margin-top:8px">
+    <div class="sec-title">📋 Full Corporate Action History</div>
+    <div class="sec-line"></div>
+    <button class="bsm br" onclick="clearAllCA()">🗑 Clear All</button>
+  </div>
+  <div class="txn-table-wrap">
+    <table class="txn-table">
+      <thead><tr>
+        <th>Date</th><th>Stock</th><th>Action</th><th>Details</th><th>Impact on Holdings</th><th>Avg Cost After</th><th>Notes</th><th></th>
+      </tr></thead>
+      <tbody id="caBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ══ TAB: PLANNER ══ -->
+<div id="tab-planner" class="tab-pane">
+  <div class="planner">
+    <div class="planner-head" onclick="togglePlanner()">
+      <div>
+        <div class="planner-head-title">🎯 SIP Goal Planner — Retire at 60</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:2px">Base ₹30L · Equity 14.5% CAGR · Gold 10% CAGR</div>
+      </div>
+      <span class="planner-toggle" id="plannerToggle">▼ EXPAND</span>
+    </div>
+    <div class="planner-body" id="plannerBody" style="display:none">
+      <div class="honest-box">
+        <div class="honest-title">⚠️ Honest Assessment</div>
+        <div class="honest-body" id="honestText">Loading...</div>
+      </div>
+      <div class="planner-controls">
+        <div class="ctrl-group"><label>Starting Monthly SIP (₹)</label><div class="ctrl-slider-wrap"><input type="range" class="ctrl-slider" id="slSip" min="125000" max="500000" step="12500" value="200000" oninput="updatePlanner()"><span class="ctrl-val" id="vSip">₹2.00L</span></div></div>
+        <div class="ctrl-group"><label>Annual Step-Up (%)</label><div class="ctrl-slider-wrap"><input type="range" class="ctrl-slider" id="slStep" min="0" max="20" step="1" value="10" oninput="updatePlanner()"><span class="ctrl-val" id="vStep">10%</span></div></div>
+        <div class="ctrl-group"><label>Equity CAGR (%)</label><div class="ctrl-slider-wrap"><input type="range" class="ctrl-slider" id="slCagr" min="10" max="18" step="0.5" value="14.5" oninput="updatePlanner()"><span class="ctrl-val" id="vCagr">14.5%</span></div></div>
+      </div>
+      <div class="sip-result-bar">
+        <div class="res-cell"><div class="rl">Corpus at 60</div><div class="rv" id="r60">—</div><div class="rs" style="font-size:11px;color:var(--text2)">Equity + Gold</div></div>
+        <div class="res-cell"><div class="rl">Corpus at 65</div><div class="rv" id="r65">—</div><div class="rs" style="font-size:11px;color:var(--text2)">If extended 5 yrs</div></div>
+        <div class="res-cell"><div class="rl">SIP at Age 55</div><div class="rv" id="rSip55">—</div><div class="rs" style="font-size:11px;color:var(--text2)">After step-ups</div></div>
+        <div class="res-cell"><div class="rl">Gap to ₹100Cr</div><div class="rv" id="rGap" style="color:var(--amber)">—</div><div class="rs" id="rGapNote" style="font-size:11px;color:var(--text2)">—</div></div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Quick Scenarios</div>
+      <div class="scenario-cards">
+        <div class="sc-card" onclick="applyScenario(125000,0,14.5)"><div class="sc-name">Conservative</div><div class="sc-sip">₹1.25L · Flat</div><div class="sc-corpus low">₹26 Cr at 60</div><div class="sc-detail">Current pace · ₹42Cr at 65</div></div>
+        <div class="sc-card rec" onclick="applyScenario(200000,10,14.5)"><div class="sc-name">Balanced Growth</div><div class="sc-sip">₹2L · 10% step-up</div><div class="sc-corpus ok">₹55 Cr at 60</div><div class="sc-detail">₹124Cr at 65 · Best fit</div></div>
+        <div class="sc-card" onclick="applyScenario(300000,15,14.5)"><div class="sc-name">Aggressive 🎯</div><div class="sc-sip">₹3L · 15% step-up</div><div class="sc-corpus good">₹105 Cr at 60</div><div class="sc-detail">Hits ₹100Cr goal at 60</div></div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">📈 Projection · 🟡 Equity · 🟤 Gold</div>
+      <div class="proj-bars" id="projBars"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- LOG SIP MODAL -->
+<div class="modal-overlay" id="logModal">
+  <div class="modal modal-wide">
+    <div class="modal-top">
+      <div><div class="modal-title" id="logTitle">Log SIP Transaction</div><div class="modal-sub" id="logSub">Record amount, price, units</div></div>
+      <button class="modal-close" onclick="closeM('logModal')">✕</button>
+    </div>
+    <div class="log-form">
+      <div class="form-group"><label>Stock</label>
+        <select class="form-input" id="logSym" onchange="updateLogCalc()">
+          <option value="">— Select Stock —</option>
+        </select>
+      </div>
+      <div class="form-group"><label>SIP Date</label>
+        <input type="date" class="form-input" id="logDate">
+      </div>
+      <div class="form-group"><label>Amount Paid (₹)</label>
+        <input type="number" class="form-input" id="logAmount" placeholder="e.g. 18000" oninput="updateLogCalc()">
+      </div>
+      <div class="form-group"><label>Market Price Per Share (₹)</label>
+        <input type="number" class="form-input" id="logPrice" placeholder="e.g. 1650.50" step="0.01" oninput="updateLogCalc()">
+      </div>
+      <div class="form-group"><label>Total Qty Currently Held</label>
+        <input type="text" class="form-input" id="logQtyHeld" disabled style="opacity:.6;cursor:default" placeholder="Auto-calculated from your logs">
+      </div>
+      <div class="form-group full"><label>Notes (optional)</label>
+        <input type="text" class="form-input" id="logNotes" placeholder="e.g. Q3 results strong, added extra">
+      </div>
+      <div class="form-group full">
+        <div class="calc-preview" id="logPreview">
+          Fill amount and price above to see units bought and average cost calculation.
+        </div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-dis" onclick="closeM('logModal')">Cancel</button>
+      <button class="btn-act btn-act-g" onclick="saveSipLog()">✓ Save Transaction</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALERT MODAL -->
+<div class="modal-overlay" id="alertModal">
+  <div class="modal">
+    <div class="modal-top"><div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.12em;margin-bottom:4px">ALERT DETAIL</div><div class="modal-title" id="mTitle">Alert</div></div><button class="modal-close" onclick="closeM('alertModal')">✕</button></div>
+    <div class="modal-body" id="mBody"></div>
+    <div class="modal-btns"><button class="btn-dis" onclick="closeM('alertModal')">Dismiss</button><button class="btn-act" id="mActBtn">Take Action</button></div>
+  </div>
+</div>
+
+<!-- REPLACE MODAL -->
+<div class="modal-overlay" id="repModal">
+  <div class="modal">
+    <div class="modal-top"><div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.12em;margin-bottom:4px">REPLACE STOCK</div><div class="modal-title" id="repTitle">Select Replacement</div></div><button class="modal-close" onclick="closeM('repModal')">✕</button></div>
+    <div style="padding:20px 24px"><div style="font-size:13px;color:var(--text2);margin-bottom:12px">Goldman Sachs recommended replacements:</div><div class="rep-grid" id="repOpts"></div></div>
+    <div class="modal-btns"><button class="btn-dis" onclick="closeM('repModal')">Cancel</button><button class="btn-act" onclick="confirmReplace()">✓ Confirm</button></div>
+  </div>
+</div>
+
+<!-- CORPORATE ACTION MODAL -->
+<div class="modal-overlay" id="caModal">
+  <div class="modal modal-wide">
+    <div class="modal-top">
+      <div><div class="modal-title">🏛 Log Corporate Action</div><div class="modal-sub" id="caSub">Dividend · Bonus Shares · Stock Split</div></div>
+      <button class="modal-close" onclick="closeM('caModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <!-- Action Type Selector -->
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        <button class="ca-type-btn active" id="caBtn-dividend" onclick="setCAType('dividend')">💰 Dividend</button>
+        <button class="ca-type-btn" id="caBtn-bonus" onclick="setCAType('bonus')">🎁 Bonus Shares</button>
+        <button class="ca-type-btn" id="caBtn-split" onclick="setCAType('split')">✂️ Stock Split</button>
+      </div>
+
+      <div class="log-form" style="padding:0">
+        <div class="form-group">
+          <label>Stock</label>
+          <select class="form-input" id="caSym" onchange="updateCACalc()">
+            <option value="">— Select Stock —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ex-Date / Record Date</label>
+          <input type="date" class="form-input" id="caDate">
+        </div>
+
+        <!-- DIVIDEND fields -->
+        <div id="ca-fields-dividend">
+          <div class="form-group">
+            <label>Dividend Per Share (₹)</label>
+            <input type="number" class="form-input" id="caDivPerShare" placeholder="e.g. 19.50" step="0.01" oninput="updateCACalc()">
+          </div>
+          <div class="form-group">
+            <label>Dividend Type</label>
+            <select class="form-input" id="caDivType">
+              <option value="final">Final Dividend</option>
+              <option value="interim">Interim Dividend</option>
+              <option value="special">Special Dividend</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- BONUS fields -->
+        <div id="ca-fields-bonus" style="display:none">
+          <div class="form-group">
+            <label>Bonus Ratio (shares given : held)</label>
+            <input type="text" class="form-input" id="caBonusRatio" placeholder="e.g. 1:2 (1 share for every 2 held)" oninput="updateCACalc()">
+          </div>
+          <div class="form-group">
+            <label style="color:var(--text3)">Your Shares Held (auto-calculated)</label>
+            <input type="text" class="form-input" id="caBonusHeld" disabled style="opacity:.5" placeholder="Will be filled from your holdings">
+          </div>
+        </div>
+
+        <!-- SPLIT fields -->
+        <div id="ca-fields-split" style="display:none">
+          <div class="form-group">
+            <label>Split Ratio (new : old)</label>
+            <input type="text" class="form-input" id="caSplitRatio" placeholder="e.g. 5:1 (5 new shares per 1 old)" oninput="updateCACalc()">
+          </div>
+          <div class="form-group">
+            <label>Pre-Split Price (₹) — for record</label>
+            <input type="number" class="form-input" id="caSplitPrePrice" placeholder="e.g. 1650" step="0.01" oninput="updateCACalc()">
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label>Notes (optional)</label>
+          <input type="text" class="form-input" id="caNotes" placeholder="e.g. FY26 final dividend, Board meeting 12 Feb">
+        </div>
+
+        <div class="form-group full">
+          <div class="calc-preview" id="caPreview">Select a stock and fill the details to see the impact on your holdings.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-dis" onclick="closeM('caModal')">Cancel</button>
+      <button class="btn-act btn-act-g" onclick="saveCA()">✓ Save Corporate Action</button>
+    </div>
+  </div>
+</div>
+
+<!-- EMAIL SETUP MODAL -->
+<div class="modal-overlay" id="emailModal">
+  <div class="modal">
+    <div class="modal-top"><div><div class="modal-title">📧 Email Reminder Setup</div><div class="modal-sub">Get emailed if SIP not logged by 8PM on SIP date</div></div><button class="modal-close" onclick="closeM('emailModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:16px"><label style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:8px">Your Email Address</label>
+        <input type="email" class="form-input" id="emailInput" placeholder="dr.ram@example.com">
+      </div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:14px">
+        <strong style="color:var(--text)">How it works:</strong><br>
+        • Each SIP date, this app checks if you've logged the transaction<br>
+        • If not logged by 8:00 PM, a popup reminder fires with alert sound<br>
+        • Email reminder content is shown in the popup (copy to send manually or connect Gmail API)<br>
+        • Browser must be open for popup reminders to fire<br>
+        <br><strong style="color:var(--gold)">Note:</strong> This is a client-side app — for automatic emails without the browser open, a server-side webhook is needed. The reminder popup works fully offline.
+      </div>
+    </div>
+    <div class="modal-btns"><button class="btn-dis" onclick="closeM('emailModal')">Cancel</button><button class="btn-act" onclick="saveEmail()">✓ Save Email</button></div>
+  </div>
+</div>
+
+<!-- REMINDER OVERLAY -->
+<div class="reminder-overlay" id="reminderOverlay">
+  <div class="reminder-box">
+    <div class="rem-icon">⏰</div>
+    <div class="rem-title">SIP REMINDER!</div>
+    <div class="rem-body">
+      Your SIP is due today:<br>
+      <span class="rem-stock" id="remStock">HDFCBANK</span>
+      <span class="rem-amount" id="remAmount">₹18,000</span>
+      Have you completed and logged this SIP?
+    </div>
+    <div class="rem-btns">
+      <button class="rem-btn-log" onclick="openLogFromReminder()">✏️ Log It Now</button>
+      <button class="rem-btn-snooze" onclick="snoozeReminder()">Snooze 1hr</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-c" id="toastC"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ════════════════════════════════════════════
+// CORE DATA
+// ════════════════════════════════════════════
+const STOCKS = [
+  {id:1,sym:'HDFCBANK',name:'HDFC Bank Ltd.',cap:'L',idx:'NSE50',baseAmt:18000,day:5,status:'active',risk:4,sec:'Banking',sig:'ACCUMULATE'},
+  {id:2,sym:'ICICIBANK',name:'ICICI Bank Ltd.',cap:'L',idx:'NSE50',baseAmt:15000,day:7,status:'active',risk:4,sec:'Banking',sig:'BUY'},
+  {id:3,sym:'RELIANCE',name:'Reliance Industries',cap:'L',idx:'NSE50',baseAmt:13000,day:9,status:'active',risk:5,sec:'Conglomerate',sig:'HOLD/ADD'},
+  {id:4,sym:'INFY',name:'Infosys Ltd.',cap:'L',idx:'NSE50',baseAmt:12000,day:11,status:'active',risk:4,sec:'IT',sig:'ACCUMULATE'},
+  {id:5,sym:'SUNPHARMA',name:'Sun Pharmaceutical',cap:'L',idx:'NSE50',baseAmt:11000,day:13,status:'active',risk:5,sec:'Pharma',sig:'BUY'},
+  {id:6,sym:'DIXON',name:'Dixon Technologies',cap:'M',idx:'MIDCAP',baseAmt:14000,day:15,status:'active',risk:6,sec:'EMS',sig:'BUY'},
+  {id:7,sym:'POLYCAB',name:'Polycab India Ltd.',cap:'M',idx:'MIDCAP',baseAmt:14000,day:17,status:'active',risk:5,sec:'Cables',sig:'BUY'},
+  {id:8,sym:'KPIGREEN',name:'KPI Green Energy',cap:'S',idx:'SMALLCAP',baseAmt:10000,day:19,status:'active',risk:7,sec:'Renewables',sig:'BUY'},
+  {id:9,sym:'BRIGADE',name:'Brigade Enterprises',cap:'S',idx:'SMALLCAP',baseAmt:10500,day:21,status:'active',risk:6,sec:'Real Estate',sig:'ACCUMULATE'},
+  {id:10,sym:'NEULANDLAB',name:'Neuland Laboratories',cap:'X',idx:'MICROCAP',baseAmt:7500,day:23,status:'active',risk:7,sec:'Pharma API',sig:'BUY'},
+];
+
+// ── WIFE'S PORTFOLIO — SteadyWealth · Conservative · ₹1L/mo
+const STOCKS_WIFE = [
+  {id:1,sym:'TCS',name:'Tata Consultancy Services',cap:'L',idx:'NSE50',baseAmt:18000,day:4,status:'active',risk:3,sec:'IT Services',sig:'ACCUMULATE'},
+  {id:2,sym:'BHARTIARTL',name:'Bharti Airtel Ltd.',cap:'L',idx:'NSE50',baseAmt:15000,day:6,status:'active',risk:4,sec:'Telecom',sig:'BUY'},
+  {id:3,sym:'MARUTI',name:'Maruti Suzuki India',cap:'L',idx:'NSE50',baseAmt:13000,day:8,status:'active',risk:4,sec:'Auto',sig:'BUY'},
+  {id:4,sym:'HINDUNILVR',name:'Hindustan Unilever',cap:'L',idx:'NSE50',baseAmt:12000,day:10,status:'active',risk:3,sec:'FMCG',sig:'ACCUMULATE'},
+  {id:5,sym:'COALINDIA',name:'Coal India Ltd.',cap:'L',idx:'NSE50',baseAmt:10000,day:12,status:'active',risk:4,sec:'Mining/PSU',sig:'BUY'},
+  {id:6,sym:'BAJFINANCE',name:'Bajaj Finance Ltd.',cap:'L',idx:'NSE50',baseAmt:12000,day:14,status:'active',risk:5,sec:'NBFC',sig:'ACCUMULATE'},
+  {id:7,sym:'PIDILITIND',name:'Pidilite Industries',cap:'M',idx:'MIDCAP',baseAmt:10000,day:16,status:'active',risk:4,sec:'Adhesives',sig:'ACCUMULATE'},
+  {id:8,sym:'APOLLOHOSP',name:'Apollo Hospitals',cap:'M',idx:'MIDCAP',baseAmt:10000,day:18,status:'active',risk:5,sec:'Healthcare',sig:'BUY'},
+  {id:9,sym:'TITAN',name:'Titan Company Ltd.',cap:'M',idx:'MIDCAP',baseAmt:8000,day:20,status:'active',risk:5,sec:'Jewellery',sig:'ACCUMULATE'},
+  {id:10,sym:'LTIM',name:'LTIMindtree Ltd.',cap:'M',idx:'MIDCAP',baseAmt:7000,day:22,status:'active',risk:6,sec:'IT Services',sig:'WATCH/ADD'},
+];
+
+const REPS = {
+  HDFCBANK:[{t:'KOTAKBANK',n:'Kotak Mahindra Bank',w:'Similar moat, strong CASA franchise'},{t:'AXISBANK',n:'Axis Bank Ltd.',w:'Value play, ROE improving'}],
+  ICICIBANK:[{t:'SBILIFE',n:'SBI Life Insurance',w:'Insurance penetration story'},{t:'BAJFINANCE',n:'Bajaj Finance',w:'Consumer lending leader'}],
+  RELIANCE:[{t:'NTPC',n:'NTPC Ltd.',w:'Green energy pivot, stable dividend'},{t:'BPCL',n:'BPCL',w:'Refining margin play, high yield'}],
+  INFY:[{t:'TCS',n:'TCS Ltd.',w:'Stronger deal pipeline'},{t:'HCLTECH',n:'HCL Technologies',w:'IT infra strength, lower PE'}],
+  SUNPHARMA:[{t:'DRREDDY',n:"Dr. Reddy's Labs",w:'US generics recovery'},{t:'CIPLA',n:'Cipla Ltd.',w:'Respiratory franchise strong'}],
+  DIXON:[{t:'KAYNES',n:'Kaynes Technology',w:'PCB & EMS for defence/auto'},{t:'SYRMA',n:'Syrma SGS Tech',w:'EMS diversified'}],
+  POLYCAB:[{t:'KEI',n:'KEI Industries',w:'Cables #2, near zero debt'},{t:'HAVELLS',n:'Havells India',w:'FMEG leader, brand moat'}],
+  KPIGREEN:[{t:'ADANIGREEN',n:'Adani Green Energy',w:'20GW+ pipeline'},{t:'TATAPOWER',n:'Tata Power',w:'Diversified green + distribution'}],
+  BRIGADE:[{t:'PRESTIGE',n:'Prestige Estates',w:'Premium Bangalore residential'},{t:'GODREJPROP',n:'Godrej Properties',w:'Pan-India brand'}],
+  NEULANDLAB:[{t:'DIVI',n:"Divi's Laboratories",w:'API leader, near zero debt'},{t:'LAURUS',n:'Laurus Labs',w:'CDMO pivot, oncology API'}],
+};
+
+const REPS_WIFE = {
+  TCS:[{t:'WIPRO',n:'Wipro Ltd.',w:'Improving margins, cost efficiency drive'},{t:'HCLTECH',n:'HCL Technologies',w:'IT infra strength, lower PE'}],
+  BHARTIARTL:[{t:'TATACOMM',n:'Tata Communications',w:'B2B data networking play'},{t:'INDUSTOWER',n:'Indus Towers',w:'Passive telecom infrastructure'}],
+  MARUTI:[{t:'M&M',n:'Mahindra & Mahindra',w:'EV + tractor dual play'},{t:'BAJAJ-AUTO',n:'Bajaj Auto',w:'Premium 2W + export growth'}],
+  HINDUNILVR:[{t:'DABUR',n:'Dabur India',w:'Ayurvedic FMCG, rural focus'},{t:'MARICO',n:'Marico Ltd.',w:'Parachute + Saffola brand moat'}],
+  COALINDIA:[{t:'NTPC',n:'NTPC Ltd.',w:'Green energy pivot, stable dividend'},{t:'POWERGRID',n:'Power Grid Corp',w:'Regulated transmission, 4% yield'}],
+  BAJFINANCE:[{t:'CHOLAFIN',n:'Cholamandalam Fin.',w:'Vehicle + home finance, South India'},{t:'MUTHOOTFIN',n:'Muthoot Finance',w:'Gold lending leader'}],
+  PIDILITIND:[{t:'ASIANPAINT',n:'Asian Paints',w:'Decorative paints leader'},{t:'BERGEPAINT',n:'Berger Paints',w:'#2 paints, improving margins'}],
+  APOLLOHOSP:[{t:'FORTIS',n:'Fortis Healthcare',w:'North India hospital network'},{t:'MAXHEALTH',n:'Max Healthcare',w:'Premium hospital, Delhi NCR'}],
+  TITAN:[{t:'KALYAN',n:'Kalyan Jewellers',w:'Mass market jewellery, pan-India'},{t:'SENCO',n:'Senco Gold',w:'East India jewellery leader'}],
+  LTIM:[{t:'MPHASIS',n:'Mphasis Ltd.',w:'BFSI-focused IT, DXC relationship'},{t:'COFORGE',n:'Coforge Ltd.',w:'Travel & BFSI IT vertical specialist'}],
+};
+
+const STOCK_CONTEXT = {
+  HDFCBANK:'India\'s largest private bank. Watch: NIM, credit growth, NPA, RBI policy.',
+  ICICIBANK:'Second-largest private bank, ROE improvement story. Watch: retail mix, NIM, NPA.',
+  RELIANCE:'Jio telecom + Retail + O2C + New Energy. Watch: Jio ARPU, Retail EBITDA, green H2 capex.',
+  INFY:'IT bellwether, US/Europe exposure. Watch: guidance, deal TCV, AI services demand.',
+  SUNPHARMA:'India\'s largest pharma. Watch: US specialty (Ilumya, Cequa), USFDA inspections.',
+  DIXON:'EMS leader, Apple PLI beneficiary. Watch: PLI disbursals, new client wins, margins.',
+  POLYCAB:'Cables & wires leader + FMEG. Watch: copper price impact, FMEG ramp, data centre demand.',
+  KPIGREEN:'Gujarat solar IPP + EPC. Watch: capacity addition, PPA signings, MNRE policy, D/E.',
+  BRIGADE:'South India real estate: residential+office+hospitality. Watch: Bangalore bookings, inventory.',
+  NEULANDLAB:'Specialty pharma API. Watch: USFDA inspections, complex molecule pipeline, CMS mix.',
+};
+
+const STOCK_CONTEXT_WIFE = {
+  TCS:'India\'s IT bellwether, highest dividend payer. Watch: deal TCV, AI services growth, attrition.',
+  BHARTIARTL:'Telecom consolidation winner. Watch: ARPU growth, 5G capex, Africa revenue, OneWeb.',
+  MARUTI:'India #1 carmaker, 42% share. Watch: CNG/hybrid mix, EV timeline, rural demand, margins.',
+  HINDUNILVR:'India\'s FMCG blue-chip. Watch: rural recovery, volume growth, margins, ad spends.',
+  COALINDIA:'PSU coal monopoly with 6%+ dividend. Watch: volume dispatch, e-auction premiums, capex.',
+  BAJFINANCE:'India\'s best NBFC. Watch: AUM growth, NPA, NIMs as rates fall, digital lending share.',
+  PIDILITIND:'Fevicol monopoly, 65% share. Watch: construction sector demand, raw material costs, EBITDA.',
+  APOLLOHOSP:'India hospital leader. Watch: ARPOB, occupancy rates, Apollo 24|7 digital growth.',
+  TITAN:'Tata jewellery + watches + Taneira. Watch: gold price impact, studded ratio, store additions.',
+  LTIM:'LTI+Mindtree merged IT. Watch: deal wins, margin expansion, attrition control, BFSI exposure.',
+};
+
+const FALLBACK_ALL = {
+  HDFCBANK:{sev:'info',type:'HOLD',head:'HDFC Bank NIM steady 3.6%, credit growth on track',act:'All metrics green. Continue SIP.',detail:'NIM at 3.6% within guidance. Gross NPA at 1.42% — well below 3% exit trigger. Loan growth 14.2% YoY.',aLbl:'Mark Reviewed'},
+  ICICIBANK:{sev:'ok',type:'BUY',head:'ICICI Bank ROE 18.4% — decade high',act:'Excellent. Consider adding ₹2,000 this month.',detail:'ROE 18.4% exceeds HOLD condition of >16%. Retail mix 63%. Credit cards +22% YoY.',aLbl:'Boost SIP'},
+  RELIANCE:{sev:'warning',type:'WATCH',head:'Jio ARPU growth slows 1.8% QoQ',act:'Monitor 1 more quarter. Exit trigger is 3 consecutive quarters.',detail:'Jio ARPU ₹182 vs ₹185 expected. Retail EBITDA margins stable 7.2%. New Energy on schedule.',aLbl:'Set Watch'},
+  INFY:{sev:'info',type:'HOLD',head:'Infosys Q3 miss 0.4% — guidance maintained',act:'Minor miss. Hold firmly. Continue SIP.',detail:'Revenue $4.93B vs $4.95B. Full-year guidance 4.5–5% maintained. Deal TCV $2.4B strong.',aLbl:'Hold Firm'},
+  SUNPHARMA:{sev:'warning',type:'WATCH',head:'USFDA Form 483 at Halol — not import alert',act:'Watch 90-day resolution. Sell trigger is Import Alert.',detail:'4 observations at Halol. US specialty growing 18% YoY unaffected. Management resolves 483s within 60 days typically.',aLbl:'Set Alert'},
+  DIXON:{sev:'ok',type:'BUY',head:'Dixon wins ₹3,200 Cr Apple contract',act:'Strong catalyst. Hold firmly. Add on dips.',detail:'New Apple contract scales manufacturing base. PLI on track. Revenue guidance upgraded to ₹35,000 Cr FY27.',aLbl:'Mark Positive'},
+  POLYCAB:{sev:'info',type:'HOLD',head:'Polycab Q3 revenue +19% YoY, FMEG near breakeven',act:'Thesis intact. Continue SIP. Monitor copper.',detail:'Cables revenue +19% on infra+data centre demand. FMEG approaching EBITDA breakeven. D/E 0.08x.',aLbl:'Mark Reviewed'},
+  KPIGREEN:{sev:'info',type:'HOLD',head:'KPI Green adds 180 MW capacity, on target',act:'On track. Hold. Watch D/E if it crosses 1.5x.',detail:'180 MW commissioned Q3, cumulative 1.2 GW. PPA signed 320 MW pipeline. D/E 1.1x manageable.',aLbl:'Hold Firm'},
+  BRIGADE:{sev:'ok',type:'BUY',head:'Brigade Q3 presales ₹1,850 Cr — record',act:'Strong bookings. Accumulate on dips.',detail:'₹1,850 Cr presales Q3 — highest ever. Bangalore IT sector demand robust. Office leasing 92% occupancy.',aLbl:'Accumulate'},
+  NEULANDLAB:{sev:'info',type:'HOLD',head:'Neuland CMS mix reaches 44%, complexity rising',act:'Thesis intact. High-complexity API pipeline building.',detail:'CMS now 44% of revenue (from 38%). USFDA inspection Unit-3 passed clean. No exit trigger met.',aLbl:'Hold Firm'},
+};
+
+const FALLBACK_WIFE = {
+  TCS:{sev:'ok',type:'ACCUMULATE',head:'TCS Q3 deal TCV $10.2B — strong pipeline',act:'Dividend ₹28/share. Continue SIP confidently.',detail:'Deal wins robust across BFSI and manufacturing. Revenue +5.6% YoY. AI services now 15% of new deals.',aLbl:'Mark Reviewed'},
+  BHARTIARTL:{sev:'ok',type:'BUY',head:'Airtel ARPU ₹245 — up 8% YoY, 5G on track',act:'Thesis intact. Morgan Stanley added to Focus List. Continue SIP.',detail:'ARPU growth driven by tariff hikes. 5G subscribers 87M. Africa revenue +12% USD. OneWeb LEO on schedule.',aLbl:'Accumulate'},
+  MARUTI:{sev:'ok',type:'BUY',head:'Maruti Q3 net profit +15.8% QoQ — strong momentum',act:'Revenue up 3 consecutive quarters. SIP on track.',detail:'Profit ₹3,879 Cr. CNG vehicle mix 32% providing margin buffer. EV launch pipeline H2 2026.',aLbl:'Mark Positive'},
+  HINDUNILVR:{sev:'info',type:'ACCUMULATE',head:'HUL volume growth 3% — rural recovery building',act:'Defensive anchor. Hold through correction. SIP on.',detail:'Volume +3% supported by rural demand. Premium mix improving. Margin at 24.2% stable. Dividend reliable.',aLbl:'Hold Firm'},
+  COALINDIA:{sev:'ok',type:'BUY',head:'Coal India dividend yield 6.2% at current price',act:'PE 9.1x is deep value. Correction = opportunity.',detail:'52W low near. E-auction premiums expanding. Government offtake guaranteed. Cash-rich balance sheet.',aLbl:'Accumulate'},
+  BAJFINANCE:{sev:'info',type:'ACCUMULATE',head:'Bajaj Finance Q3 AUM +26% YoY, NPA contained',act:'Strong NBFC. Accumulate in current correction.',detail:'AUM ₹3.9L Cr. GNPA 1.12% — within comfort. Lower bond yields expanding NIMs. Digital loans 44% of mix.',aLbl:'Accumulate'},
+  PIDILITIND:{sev:'ok',type:'ACCUMULATE',head:'Pidilite construction demand up — infra cycle tailwind',act:'Fevicol moat unassailable. Steady compounder. Hold.',detail:'Construction adhesive volume +11% on infra spend. VAM raw material price stable. EBITDA margins 22%.',aLbl:'Mark Reviewed'},
+  APOLLOHOSP:{sev:'ok',type:'BUY',head:'Apollo ARPOB ₹68,200 — highest in sector',act:'Healthcare privatisation story intact. Continue SIP.',detail:'ARPOB +9% YoY. Occupancy 69%. Apollo 24|7 digital revenue growing 34% YoY. New hospitals on schedule.',aLbl:'Mark Positive'},
+  TITAN:{sev:'info',type:'ACCUMULATE',head:'Titan Q3 jewellery revenue +25% — gold price tailwind',act:'Brand moat strong. Gold price helps studded ratio.',detail:'Tanishq adding 40 stores FY26. Studded ratio 32% (target 35%). CaratLane online growing 28%.',aLbl:'Hold Firm'},
+  LTIM:{sev:'warning',type:'WATCH/ADD',head:'LTIMindtree deal win momentum — margin under pressure',act:'Watch margins 1 more quarter. Add on dips below ₹4,800.',detail:'Revenue growth 8.2% YoY. EBIT margin 14.8% — below 15% target. BFSI vertical recovering. Attrition 14.2%.',aLbl:'Watch'},
+};
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+// ── Active stocks / state (driven by activePortfolio)
+let stocks = STOCKS.map(s=>({...s, amt:s.baseAmt}));
+let stocksWife = STOCKS_WIFE.map(s=>({...s, amt:s.baseAmt}));
+
+// Helpers — always returns data for the currently active portfolio
+function getStocksArr()    { return activePortfolio==='wife' ? stocksWife : stocks; }
+function getStockDefs()    { return activePortfolio==='wife' ? STOCKS_WIFE : STOCKS; }
+function getReps()         { return activePortfolio==='wife' ? REPS_WIFE : getReps(); }
+function getCtx()          { return activePortfolio==='wife' ? STOCK_CONTEXT_WIFE : getCtx(); }
+function getFallback()     { return activePortfolio==='wife' ? FALLBACK_WIFE : getFallback(); }
+function getPriceDefaults(){ return activePortfolio==='wife' ? PRICE_DEFAULTS_WIFE : PRICE_DEFAULTS; }
+function getTxnKey()       { return activePortfolio==='wife' ? 'wifeSipTxns'  : 'ramSipTxns'; }
+function getCAKey()        { return activePortfolio==='wife' ? 'wifeCALog'    : 'ramCALog'; }
+function getPriceKey()     { return activePortfolio==='wife' ? 'wifeLivePrices' : 'ramLivePrices'; }
+function getPlannerKey()   { return activePortfolio==='wife' ? 'wifePlannerSip' : 'ramPlannerSip'; }
+function getDefaultSip()   { return activePortfolio==='wife' ? 100000 : 200000; }
+let curRep = '';
+let reminderQueue = [];
+let reminderStock = null;
+let snoozedUntil = {};
+let emailAddress = '';
+let bigChartInstance = null;
+let stockCharts = {};
+
+// ════════════════════════════════════════════
+// PRICE ENGINE — Hardcoded recent NSE prices
+// (as of early March 2026, AI knowledge)
+// User can manually update any price via
+// the "Update Prices" button
+// ════════════════════════════════════════════
+const PRICE_DEFAULTS = {
+  HDFCBANK:  { price: 1672.00, change:  12.50, changePct:  0.75, high: 1681.00, low: 1658.00, prevClose: 1659.50 },
+  ICICIBANK: { price: 1248.00, change:  -6.80, changePct: -0.54, high: 1261.00, low: 1242.00, prevClose: 1254.80 },
+  RELIANCE:  { price: 1285.00, change:   8.40, changePct:  0.66, high: 1294.00, low: 1276.00, prevClose: 1276.60 },
+  INFY:      { price: 1823.00, change: -14.20, changePct: -0.77, high: 1842.00, low: 1818.00, prevClose: 1837.20 },
+  SUNPHARMA: { price: 1756.00, change:  22.30, changePct:  1.29, high: 1768.00, low: 1741.00, prevClose: 1733.70 },
+  DIXON:     { price: 14820.0, change: -240.0, changePct: -1.59, high:15100.00, low:14750.00, prevClose:15060.00 },
+  POLYCAB:   { price: 5840.00, change:  68.00, changePct:  1.18, high: 5872.00, low: 5796.00, prevClose: 5772.00 },
+  KPIGREEN:  { price:  468.00, change:  -9.20, changePct: -1.93, high:  480.00, low:  462.00, prevClose:  477.20 },
+  BRIGADE:   { price: 1142.00, change:  18.60, changePct:  1.66, high: 1158.00, low: 1128.00, prevClose: 1123.40 },
+  NEULANDLAB:{ price: 9840.00, change: 124.00, changePct:  1.28, high: 9900.00, low: 9740.00, prevClose: 9716.00 },
+};
+
+const PRICE_DEFAULTS_WIFE = {
+  TCS:       { price: 3420.00, change: -28.00, changePct: -0.81, high: 3460.00, low: 3400.00, prevClose: 3448.00 },
+  BHARTIARTL:{ price: 1620.00, change:  14.50, changePct:  0.90, high: 1635.00, low: 1608.00, prevClose: 1605.50 },
+  MARUTI:    { price:13478.00, change:-180.00, changePct: -1.32, high:13800.00, low:13365.00, prevClose:13658.00 },
+  HINDUNILVR:{ price: 2280.00, change:  -8.40, changePct: -0.37, high: 2296.00, low: 2268.00, prevClose: 2288.40 },
+  COALINDIA: { price:  438.00, change:  -4.20, changePct: -0.95, high:  446.00, low:  434.00, prevClose:  442.20 },
+  BAJFINANCE:{ price: 7240.00, change:  62.00, changePct:  0.86, high: 7290.00, low: 7190.00, prevClose: 7178.00 },
+  PIDILITIND:{ price: 2840.00, change:  18.00, changePct:  0.64, high: 2858.00, low: 2818.00, prevClose: 2822.00 },
+  APOLLOHOSP:{ price: 6820.00, change:  94.00, changePct:  1.40, high: 6870.00, low: 6748.00, prevClose: 6726.00 },
+  TITAN:     { price: 3240.00, change: -22.00, changePct: -0.67, high: 3272.00, low: 3224.00, prevClose: 3262.00 },
+  LTIM:      { price: 4960.00, change: -48.00, changePct: -0.96, high: 5020.00, low: 4940.00, prevClose: 5008.00 },
+};
+
+// ── Active portfolio: 'ram' or 'wife'
+let activePortfolio = 'ram';
+
+let livePrices = {};
+let pricesFetched = false;
+let priceRefreshTimer = null;
+
+// ════════════════════════════════════════════
+// FIREBASE STORAGE LAYER
+// ════════════════════════════════════════════
+let db = null;
+
+async function initFirebase() {
+  // Load config from localStorage (set once on first run)
+  const cfg = JSON.parse(localStorage.getItem('sipFirebaseCfg') || 'null');
+  if (!cfg) return false;
+  try {
+    const { initializeApp, getFirestore } = window._fbModules;
+    const app = initializeApp(cfg);
+    db = getFirestore(app);
+    return true;
+  } catch(e) {
+    console.error('Firebase init failed:', e);
+    return false;
+  }
+}
+
+async function fbGet(key) {
+  if (!db) return null;
+  try {
+    const { doc, getDoc } = window._fbModules;
+    const snap = await getDoc(doc(db, 'sipdata', key));
+    return snap.exists() ? snap.data().value : null;
+  } catch(e) { return null; }
+}
+
+async function fbSet(key, value) {
+  if (!db) return;
+  try {
+    const { doc, setDoc } = window._fbModules;
+    await setDoc(doc(db, 'sipdata', key), { value, updatedAt: Date.now() });
+  } catch(e) { console.error('fbSet error:', e); }
+}
+
+// ── PRICES
+async function loadPrices() {
+  try {
+    const res = await fbGet(getPriceKey());
+    if (res) {
+      livePrices = JSON.parse(res);
+    } else {
+      resetToDefaultPrices();
+    }
+  } catch(e) { resetToDefaultPrices(); }
+}
+
+function resetToDefaultPrices() {
+  const now = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+  const defs = getPriceDefaults();
+  getStocksArr().forEach(s => {
+    const d = defs[s.sym];
+    if (d) livePrices[s.sym] = { ...d, updated: now, source: 'default' };
+  });
+  savePrices();
+}
+
+async function savePrices() {
+  try { await fbSet(getPriceKey(), JSON.stringify(livePrices)); } catch(e) {}
+}
+
+function getLivePrice(sym) {
+  return livePrices[sym]?.price || null;
+}
+
+function scheduleAutoRefresh() {
+  if (priceRefreshTimer) clearTimeout(priceRefreshTimer);
+  const istMinutes = (new Date().getUTCHours() * 60 + new Date().getUTCMinutes() + 330) % 1440;
+  const marketOpen = 9 * 60 + 15;
+  const marketClose = 15 * 60 + 30;
+  if (istMinutes >= marketOpen && istMinutes <= marketClose) {
+    priceRefreshTimer = setTimeout(() => fetchAllPrices(false), 5 * 60 * 1000);
+  }
+}
+
+// ── Price update — direct manual entry (live fetch blocked by sandbox)
+function fetchAllPrices(manual = false) {
+  openPriceUpdateModal();
+}
+
+function openPriceUpdateModal() {
+  let modal = document.getElementById('priceModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'priceModal';
+    modal.className = 'modal-overlay';
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div class="modal modal-wide" style="max-width:720px">
+      <div class="modal-top">
+        <div>
+          <div class="modal-title">📶 Update Stock Prices</div>
+          <div class="modal-sub">Enter today's closing price for each stock — only the current price field is needed</div>
+        </div>
+        <button class="modal-close" onclick="closeM('priceModal')">✕</button>
+      </div>
+      <div style="padding:12px 20px 4px">
+        <div style="background:var(--gold-dim);border:1px solid rgba(240,168,48,.25);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:13px">📱 Check prices on:</span>
+          <a href="https://www.nseindia.com/market-data/live-equity-market" target="_blank" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);text-decoration:none;border:1px solid rgba(240,168,48,.3);padding:3px 10px;border-radius:4px">NSE India ↗</a>
+          <a href="https://kite.zerodha.com" target="_blank" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--blue);text-decoration:none;border:1px solid rgba(59,130,246,.3);padding:3px 10px;border-radius:4px">Zerodha Kite ↗</a>
+          <a href="https://finance.yahoo.com/screener" target="_blank" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);text-decoration:none;border:1px solid var(--border2);padding:3px 10px;border-radius:4px">Yahoo Finance ↗</a>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:auto">Pre-filled with last known prices</span>
+        </div>
+      </div>
+      <div style="padding:12px 20px">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px" id="priceEditGrid"></div>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-dis" onclick="closeM('priceModal')">Cancel</button>
+        <button class="btn-act" onclick="resetToDefaultPrices();closeM('priceModal');renderPriceTicker();renderAll();toast('Prices reset to reference data','warning')" style="font-size:11px">↺ Reset to Defaults</button>
+        <button class="btn-act btn-act-g" onclick="savePriceEdits()">✓ Save All Prices</button>
+      </div>
+    </div>`;
+
+  // Populate editable fields
+  const grid = document.getElementById('priceEditGrid');
+  grid.innerHTML = getStocksArr().map(s => {
+    const p = livePrices[s.sym] || getPriceDefaults()[s.sym] || {};
+    const d = getPriceDefaults()[s.sym] || {};
+    const adjUnits = getFullAdjustedUnits(s.sym);
+    const txns = getTxnLog().filter(t=>t.sym===s.sym);
+    const invested = txns.reduce((a,t)=>a+t.amount,0);
+    const avgCost = adjUnits>0&&invested>0 ? (invested/adjUnits).toFixed(2) : '—';
+    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--gold)">${s.sym}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-left:8px">${s.name.split(' ').slice(0,2).join(' ')}</span>
+        </div>
+        ${adjUnits>0?`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2)">${adjUnits.toFixed(2)} shares · avg ₹${avgCost}</span>`:'<span style="font-size:10px;color:var(--text3)">not yet invested</span>'}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="flex:1">
+          <label style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.06em">CURRENT PRICE (₹)</label>
+          <input type="number" class="form-input" id="pp-${s.sym}" value="${p.price||''}" step="0.05"
+            style="padding:8px 10px;font-size:14px;font-family:'JetBrains Mono',monospace;font-weight:600;margin-top:4px"
+            oninput="calcPriceChange('${s.sym}')">
+        </div>
+        <div style="flex:1">
+          <label style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.06em">PREV CLOSE (₹)</label>
+          <input type="number" class="form-input" id="pc-${s.sym}" value="${p.prevClose||d.prevClose||''}" step="0.05"
+            style="padding:8px 10px;font-size:13px;margin-top:4px"
+            oninput="calcPriceChange('${s.sym}')">
+        </div>
+      </div>
+      <div id="pchg-${s.sym}" style="font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:6px;min-height:16px"></div>
+    </div>`;
+  }).join('');
+
+  getStocksArr().forEach(s => calcPriceChange(s.sym));
+  openM('priceModal');
+}
+
+function calcPriceChange(sym) {
+  const pEl = document.getElementById(`pp-${sym}`);
+  const cEl = document.getElementById(`pc-${sym}`);
+  const dEl = document.getElementById(`pchg-${sym}`);
+  if (!pEl || !cEl || !dEl) return;
+  const price = parseFloat(pEl.value) || 0;
+  const prev  = parseFloat(cEl.value) || 0;
+  if (!price || !prev) { dEl.textContent = '—'; return; }
+  const chg = price - prev;
+  const pct = (chg / prev) * 100;
+  const col = chg >= 0 ? 'var(--green)' : 'var(--red)';
+  dEl.style.color = col;
+  dEl.textContent = `${chg >= 0 ? '▲' : '▼'} ₹${Math.abs(chg).toFixed(2)} (${Math.abs(pct).toFixed(2)}%)`;
+}
+
+function savePriceEdits() {
+  const now = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+  let saved = 0;
+  getStocksArr().forEach(s => {
+    const price    = parseFloat(document.getElementById(`pp-${s.sym}`)?.value) || 0;
+    const prevClose= parseFloat(document.getElementById(`pc-${s.sym}`)?.value) || 0;
+    if (price > 0) {
+      const change = price - prevClose;
+      const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
+      livePrices[s.sym] = {
+        price:     parseFloat(price.toFixed(2)),
+        change:    parseFloat(change.toFixed(2)),
+        changePct: parseFloat(changePct.toFixed(2)),
+        high:      livePrices[s.sym]?.high || price,
+        low:       livePrices[s.sym]?.low  || price,
+        prevClose: parseFloat(prevClose.toFixed(2)),
+        updated:   now,
+        source:    'manual'
+      };
+      saved++;
+    }
+  });
+  savePrices();
+  closeM('priceModal');
+
+  const btn = document.getElementById('btnPrices');
+  btn.innerHTML = `📶 Prices Updated`;
+  btn.style.color = 'var(--green)';
+  btn.style.borderColor = 'rgba(34,197,94,.5)';
+  document.getElementById('priceStatus').textContent = `PRICES · ${now}`;
+  document.getElementById('priceLastUpdated').textContent = `Updated ${now}`;
+
+  renderPriceTicker();
+  renderAll();
+  playBeep('success');
+  toast(`✓ ${saved} prices saved — P&L updated everywhere`, 'success');
+}
+
+function renderPriceTicker() {
+  const ticker = document.getElementById('priceTicker');
+  const inner = document.getElementById('tickerInner');
+  if (Object.keys(livePrices).length === 0) { ticker.style.display = 'none'; return; }
+  ticker.style.display = 'block';
+  inner.innerHTML = getStocksArr().map(s => {
+    const p = livePrices[s.sym];
+    if (!p) return '';
+    const up = p.change >= 0;
+    const col = up ? 'var(--green)' : 'var(--red)';
+    const arrow = up ? '▲' : '▼';
+    return `<div style="display:flex;align-items:center;gap:6px;white-space:nowrap;padding-right:16px;border-right:1px solid var(--border);margin-right:0">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--gold)">${s.sym}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${col};font-weight:600">₹${p.price.toLocaleString('en-IN')}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${col}">${arrow} ${Math.abs(p.changePct).toFixed(2)}%</span>
+    </div>`;
+  }).join('');
+}
+
+// ── AUDIO ENGINE (Web Audio API — browser-policy safe)
+let audioCtx = null;
+let audioUnlocked = false;
+
+function getAudioCtx(){
+  if(!audioCtx) audioCtx = new(window.AudioContext||window.webkitAudioContext)();
+  // Resume if suspended (browser autoplay policy)
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// Unlock audio on FIRST user interaction (click anywhere)
+function unlockAudio(){
+  if(audioUnlocked) return;
+  try{
+    const ctx = getAudioCtx();
+    // Play a silent buffer to unlock
+    const buf = ctx.createBuffer(1,1,22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+    audioUnlocked = true;
+    document.getElementById('btnSound').style.borderColor = 'rgba(34,197,94,.4)';
+    document.getElementById('btnSound').style.color = 'var(--green)';
+    document.getElementById('btnSound').innerHTML = '🔔 Sound ON';
+  } catch(e){}
+}
+document.addEventListener('click', unlockAudio, {once: false});
+
+function testSound(){
+  unlockAudio();
+  setTimeout(()=>playBeep('sip'), 100);
+  toast('🔔 Sound test — 3-note chime playing','success');
+}
+
+function playBeep(type='sip'){
+  try{
+    const ctx = getAudioCtx();
+    // Must resume in case suspended
+    const doPlay = () => {
+      const now = ctx.currentTime;
+      if(type==='sip'){
+        // 3-note ascending chime: C5 E5 G5
+        [[523,0],[659,0.2],[784,0.4]].forEach(([freq,delay])=>{
+          const osc=ctx.createOscillator(), gain=ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type='sine'; osc.frequency.value=freq;
+          gain.gain.setValueAtTime(0, now+delay);
+          gain.gain.linearRampToValueAtTime(0.35, now+delay+0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now+delay+0.55);
+          osc.start(now+delay); osc.stop(now+delay+0.6);
+        });
+      } else if(type==='urgent'){
+        // Urgent: 3 sharp beeps
+        [0, 0.32, 0.64].forEach(delay=>{
+          const osc=ctx.createOscillator(), gain=ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type='square'; osc.frequency.value=880;
+          gain.gain.setValueAtTime(0, now+delay);
+          gain.gain.linearRampToValueAtTime(0.18, now+delay+0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now+delay+0.22);
+          osc.start(now+delay); osc.stop(now+delay+0.25);
+        });
+      } else if(type==='success'){
+        // Rising success tone
+        const osc=ctx.createOscillator(), gain=ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type='sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.linearRampToValueAtTime(880, now+0.25);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now+0.5);
+        osc.start(now); osc.stop(now+0.55);
+      }
+    };
+    if(ctx.state==='suspended'){
+      ctx.resume().then(doPlay);
+    } else {
+      doPlay();
+    }
+  }catch(e){ console.warn('Audio error:',e); }
+}
+
+// ════════════════════════════════════════════
+// STORAGE — Firebase Firestore (real-time cross-device sync)
+// ════════════════════════════════════════════
+let txnLog = []; // Ram's transactions
+let txnLogWife = []; // Wife's transactions
+function getTxnLog(){ return activePortfolio==='wife' ? txnLogWife : txnLog; }
+function setTxnLog(arr){ if(activePortfolio==='wife') txnLogWife=arr; else txnLog=arr; }
+let snoozed = {};
+
+async function saveTxns(){try{await fbSet(getTxnKey(),JSON.stringify(getTxnLog()));}catch(e){}}
+async function loadTxns(){
+  try{const r=await fbGet('ramSipTxns');if(r)txnLog=JSON.parse(r);}catch(e){}
+  try{const r=await fbGet('wifeSipTxns');if(r)txnLogWife=JSON.parse(r);}catch(e){}
+}
+async function saveEmail(){const v=document.getElementById('emailInput').value.trim();if(v&&v.includes('@')){emailAddress=v;try{await fbSet('ramEmail',v);}catch(e){}closeM('emailModal');toast(`📧 Reminders set for ${v}`,'success');}else{toast('Please enter a valid email','warning');}}
+async function loadEmail(){try{const r=await fbGet('ramEmail');if(r){emailAddress=r;document.getElementById('emailInput').value=r;}}catch(e){}}
+
+// ════════════════════════════════════════════
+// CLOCK & DATE UTILS
+// ════════════════════════════════════════════
+function clock(){document.getElementById('liveClock').textContent=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' · '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}
+setInterval(clock,1000);clock();
+
+function nextDate(day){const n=new Date();let d=new Date(n.getFullYear(),n.getMonth(),day);if(d<=n)d=new Date(n.getFullYear(),n.getMonth()+1,day);return d}
+function daysUntil(d){return Math.ceil((d-new Date())/86400000)}
+function fmtD(d){if(!d)return'—';const dt=new Date(d);return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
+function fmtDShort(d){const dt=new Date(d);return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}
+function todayKey(){const n=new Date();return `${n.getFullYear()}-${n.getMonth()+1}-${n.getDate()}`}
+function dateKey(d){const dt=new Date(d);return `${dt.getFullYear()}-${dt.getMonth()+1}-${dt.getDate()}`}
+
+// ════════════════════════════════════════════
+// REMINDER ENGINE
+// ════════════════════════════════════════════
+function checkReminders(){
+  const now=new Date();
+  const today=todayKey();
+  getStocksArr().forEach(s=>{
+    if(s.status==='paused')return;
+    const sipToday=s.day===now.getDate();
+    if(!sipToday)return;
+    // Check if already logged today
+    const alreadyLogged=getTxnLog().some(t=>t.sym===s.sym&&dateKey(t.date)===today);
+    if(alreadyLogged)return;
+    // Check snooze
+    if(snoozed[s.sym]&&new Date()<new Date(snoozed[s.sym]))return;
+    // Fire reminder if after 8AM and not logged
+    if(now.getHours()>=8){
+      showReminder(s);
+    }
+  });
+}
+
+function showReminder(s){
+  reminderStock=s;
+  document.getElementById('remStock').textContent=s.sym+' — '+s.name.substring(0,22);
+  document.getElementById('remAmount').textContent='₹'+s.amt.toLocaleString('en-IN');
+  document.getElementById('reminderOverlay').classList.add('active');
+  playBeep('urgent');
+  // Repeat beep after 2s
+  setTimeout(()=>playBeep('urgent'),2000);
+  toast(`⏰ SIP REMINDER: ${s.sym} — ₹${s.amt.toLocaleString('en-IN')} due today!`,'warning');
+}
+
+function snoozeReminder(){
+  if(reminderStock){
+    snoozed[reminderStock.sym]=new Date(new Date().getTime()+3600000).toISOString();
+    toast(`${reminderStock.sym} reminder snoozed for 1 hour`,'success');
+  }
+  document.getElementById('reminderOverlay').classList.remove('active');
+  reminderStock=null;
+}
+
+function openLogFromReminder(){
+  const s=reminderStock;
+  document.getElementById('reminderOverlay').classList.remove('active');
+  reminderStock=null;
+  openLogModal(s?s.sym:null);
+}
+
+// Check reminders every 5 minutes
+setInterval(checkReminders,300000);
+// Check on load after 3s
+setTimeout(checkReminders,3000);
+
+// ════════════════════════════════════════════
+// TRANSACTION LOG
+// ════════════════════════════════════════════
+function openLogModal(preSelectSym=null){
+  // Populate stock dropdown
+  const sel=document.getElementById('logSym');
+  sel.innerHTML='<option value="">— Select Stock —</option>';
+  getStocksArr().forEach(s=>{
+    const opt=document.createElement('option');
+    opt.value=s.sym;opt.textContent=`${s.sym} — ${s.name}`;
+    if(preSelectSym&&s.sym===preSelectSym)opt.selected=true;
+    sel.appendChild(opt);
+  });
+  // Default date to today
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('logDate').value=today;
+  // Default amount
+  if(preSelectSym){
+    const s=getStocksArr().find(x=>x.sym===preSelectSym);
+    if(s)document.getElementById('logAmount').value=s.amt;
+  }
+  document.getElementById('logPrice').value='';
+  document.getElementById('logNotes').value='';
+  updateLogCalc();
+  openM('logModal');
+}
+
+function updateLogCalc(){
+  const sym=document.getElementById('logSym').value;
+  const amount=parseFloat(document.getElementById('logAmount').value)||0;
+  const price=parseFloat(document.getElementById('logPrice').value)||0;
+
+  // Always update qty held when stock changes
+  const qtyEl = document.getElementById('logQtyHeld');
+  if(sym && qtyEl){
+    const adjUnits = getFullAdjustedUnits(sym);
+    const prevTxns = getTxnLog().filter(t=>t.sym===sym);
+    const prevInvested = prevTxns.reduce((a,t)=>a+t.amount,0);
+    const prevAvg = adjUnits>0&&prevInvested>0 ? prevInvested/adjUnits : 0;
+    qtyEl.value = adjUnits>0
+      ? `${adjUnits.toFixed(4)} shares  (avg cost ₹${prevAvg.toFixed(2)})`
+      : 'No shares yet — this will be your first purchase';
+  }
+
+  if(!sym||!amount||!price){
+    document.getElementById('logPreview').innerHTML='Fill amount and price above to see calculation.';
+    return;
+  }
+  const units=amount/price;
+  const prevTxns=getTxnLog().filter(t=>t.sym===sym);
+  const prevUnits=getFullAdjustedUnits(sym);
+  const prevInvested=prevTxns.reduce((a,t)=>a+t.amount,0);
+  const newTotalUnits=prevUnits+units;
+  const newAvg=(prevInvested+amount)/newTotalUnits;
+  const prevAvg=prevUnits>0?prevInvested/prevUnits:0;
+  const liveP = getLivePrice(sym);
+  const currentVal = liveP ? (newTotalUnits*liveP) : null;
+  document.getElementById('logPreview').innerHTML=
+    `<span>Units Buying Now:</span> ${units.toFixed(4)} shares @ ₹${price.toFixed(2)}<br>
+     <span>Amount:</span> ₹${amount.toLocaleString('en-IN')}<br>
+     ${prevUnits>0?`<span>Shares Held Before:</span> ${prevUnits.toFixed(4)} @ avg ₹${prevAvg.toFixed(2)}<br>`:''}
+     <span>Total Shares After:</span> <strong style="color:var(--gold2)">${newTotalUnits.toFixed(4)}</strong><br>
+     <span>New Average Cost:</span> <strong style="color:var(--gold)">₹${newAvg.toFixed(2)}</strong> per share
+     ${liveP?`<br><span>Current Market Value:</span> <strong style="color:var(--green)">₹${Math.round(currentVal).toLocaleString('en-IN')}</strong> @ live ₹${liveP}`:''}`;
+}
+
+function saveSipLog(){
+  const sym=document.getElementById('logSym').value;
+  const date=document.getElementById('logDate').value;
+  const amount=parseFloat(document.getElementById('logAmount').value);
+  const price=parseFloat(document.getElementById('logPrice').value);
+  const notes=document.getElementById('logNotes').value;
+  if(!sym||!date||!amount||!price){toast('Please fill all required fields','warning');return;}
+  const units=amount/price;
+  const txn={id:Date.now(),sym,date,amount,price,units,notes,currentPrice:price};
+  getTxnLog().push(txn);
+  saveTxns();
+  closeM('logModal');
+  playBeep('success');
+  toast(`✓ ${sym} SIP logged — ${units.toFixed(4)} units @ ₹${price.toFixed(2)}`,'success');
+  renderAll();
+  // Dismiss any active reminder for this stock
+  if(reminderStock&&reminderStock.sym===sym){
+    document.getElementById('reminderOverlay').classList.remove('active');
+    reminderStock=null;
+  }
+}
+
+function clearAllTxns(){if(confirm('Clear all transaction logs?')){setTxnLog([]);saveTxns();renderAll();toast('All transactions cleared','warning');}}
+function deleteTxn(id){setTxnLog(getTxnLog().filter(t=>t.id!==id));saveTxns();renderAll();toast('Transaction deleted','warning');}
+
+// ════════════════════════════════════════════
+// CORPORATE ACTIONS
+// cActionLog entries:
+//  dividend: {id,type:'dividend',sym,date,divPerShare,divType,totalReceived,notes}
+//  bonus:    {id,type:'bonus',sym,date,ratio:'1:2',bonusShares,unitsHeldAtDate,notes}
+//  split:    {id,type:'split',sym,date,ratio:'5:1',multiplier,preSplitPrice,postSplitPrice,unitsHeldAtDate,notes}
+// ════════════════════════════════════════════
+let cActionLog = [];
+let cActionLogWife = [];
+function getCALog(){ return activePortfolio==='wife' ? cActionLogWife : cActionLog; }
+function setCALog(arr){ if(activePortfolio==='wife') cActionLogWife=arr; else cActionLog=arr; }
+let caType = 'dividend';
+
+async function saveCALog(){try{await fbSet(getCAKey(),JSON.stringify(getCALog()));}catch(e){}}
+async function loadCALog(){
+  try{const r=await fbGet('ramCALog');if(r)cActionLog=JSON.parse(r);}catch(e){}
+  try{const r=await fbGet('wifeCALog');if(r)cActionLogWife=JSON.parse(r);}catch(e){}
+}
+
+// How splits/bonus affect unit count up to a given date
+function getAdjustedUnits(sym, asOfDate){
+  // Start from SIP transactions before or on asOfDate
+  const sipTxns = getTxnLog().filter(t=>t.sym===sym && t.date<=asOfDate);
+  let units = sipTxns.reduce((a,t)=>a+t.units, 0);
+  // Apply splits and bonus in chronological order up to asOfDate
+  const actions = getCALog()
+    .filter(c=>c.sym===sym && c.date<=asOfDate && (c.type==='split'||c.type==='bonus'))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  actions.forEach(c=>{
+    if(c.type==='split') units *= c.multiplier;
+    else if(c.type==='bonus') units += c.bonusShares; // bonusShares stored at time of action
+  });
+  return units;
+}
+
+// Adjusted avg cost accounting for splits (splits don't change invested amount, only unit count)
+function getAdjustedAvgCost(sym){
+  const sipTxns = getTxnLog().filter(t=>t.sym===sym).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!sipTxns.length) return 0;
+  let totalInvested = sipTxns.reduce((a,t)=>a+t.amount, 0);
+  // Total units = latest adjusted units (all splits/bonus applied)
+  const today = new Date().toISOString().split('T')[0];
+  const totalUnits = getAdjustedUnits(sym, today) + 
+    getTxnLog().filter(t=>t.sym===sym && t.date>today).reduce((a,t)=>a+t.units,0);
+  // Bonus shares are free — invested cost doesn't change, just units increase → avg cost drops
+  // That is already handled by getAdjustedUnits
+  const allUnits = getFullAdjustedUnits(sym);
+  return allUnits>0 ? totalInvested/allUnits : 0;
+}
+
+function getFullAdjustedUnits(sym){
+  const sipTxns = getTxnLog().filter(t=>t.sym===sym);
+  let units = sipTxns.reduce((a,t)=>a+t.units, 0);
+  const actions = getCALog()
+    .filter(c=>c.sym===sym && (c.type==='split'||c.type==='bonus'))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  actions.forEach(c=>{
+    if(c.type==='split') units *= c.multiplier;
+    else if(c.type==='bonus') units += c.bonusShares;
+  });
+  return units;
+}
+
+function getTotalDividends(sym){
+  return getCALog().filter(c=>c.sym===sym&&c.type==='dividend').reduce((a,c)=>a+c.totalReceived,0);
+}
+
+// ── OVERRIDE getStockStats to use adjusted units + live price
+function getStockStats(sym){
+  const txns = getTxnLog().filter(t=>t.sym===sym);
+  if(!txns.length) return{invested:0,units:0,avgCost:0,currentValue:0,pnl:0,pnlPct:0,dividends:0,txns:[],livePrice:null};
+  const invested = txns.reduce((a,t)=>a+t.amount, 0);
+  const adjUnits = getFullAdjustedUnits(sym);
+  const avgCost = adjUnits>0 ? invested/adjUnits : 0;
+  // Prefer live market price; fall back to last logged price
+  const live = getLivePrice(sym);
+  const lastLoggedPrice = txns[txns.length-1].currentPrice || txns[txns.length-1].price;
+  const lastPrice = live || lastLoggedPrice;
+  const currentValue = adjUnits * lastPrice;
+  const dividends = getTotalDividends(sym);
+  const pnl = (currentValue - invested) + dividends;
+  const pnlPct = invested>0 ? (pnl/invested)*100 : 0;
+  return{invested, units:adjUnits, avgCost, currentValue, pnl, pnlPct, lastPrice, livePrice:live, txns, dividends};
+}
+
+// ════════════════════════════════════════════
+// AI AUTO-FETCH CORPORATE ACTIONS
+// ════════════════════════════════════════════
+let caPendingReview = []; // fetched items awaiting user confirmation
+
+async function fetchCAForStock(sym){
+  const today = new Date().toISOString().split('T')[0];
+  const oneYearAgo = new Date(new Date().setFullYear(new Date().getFullYear()-1)).toISOString().split('T')[0];
+  const prompt = `You are a corporate actions data specialist for Indian equity markets.
+
+Today: 9 March 2026. Stock: ${sym} listed on NSE India.
+
+Task: List ALL corporate actions announced or effective between ${oneYearAgo} and ${today} for ${sym}. Include:
+- Dividends (interim and final) with exact per-share amount in ₹
+- Bonus share issues with exact ratio (e.g. 1:2)
+- Stock splits with exact ratio (e.g. 5:1)
+
+IMPORTANT RULES:
+- Only include events you are reasonably confident about from your training data
+- If you are uncertain or have no data, return an empty array — do NOT invent events
+- Dates must be in YYYY-MM-DD format (use ex-date or record date)
+- For dividends: divPerShare must be the net per-share amount in ₹ (not total, not percentage)
+- confidence: "high" if you are sure, "medium" if approximate
+
+Return ONLY raw JSON array, no markdown, no explanation:
+[{"type":"dividend","sym":"${sym}","date":"YYYY-MM-DD","divPerShare":0.00,"divType":"final|interim|special","description":"brief description","confidence":"high|medium"},
+ {"type":"bonus","sym":"${sym}","date":"YYYY-MM-DD","ratio":"1:2","description":"brief description","confidence":"high|medium"},
+ {"type":"split","sym":"${sym}","date":"YYYY-MM-DD","ratio":"5:1","preSplitPrice":0.00,"description":"brief description","confidence":"high|medium"}]
+
+If no corporate actions found, return: []`;
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      model:"claude-sonnet-4-20250514", max_tokens:800,
+      messages:[{role:"user", content:prompt}]
+    })
+  });
+  const data = await resp.json();
+  const raw = data.content.map(b=>b.text||'').join('').trim().replace(/```json|```/g,'').trim();
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+async function fetchAllCA(){
+  const btn = document.getElementById('btnFetchCA');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scanning...';
+  document.getElementById('caFetchProgress').style.display = 'block';
+  document.getElementById('caReviewPanel').style.display = 'none';
+  caPendingReview = [];
+
+  let done = 0;
+  const tickerDiv = document.getElementById('caFetchTickers');
+  tickerDiv.innerHTML = getStocksArr().map(s=>`<span id="catick-${s.sym}" style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.06em">◌ ${s.sym}</span>`).join('');
+
+  const updateProgress = (sym) => {
+    done++;
+    document.getElementById('caFetchCount').textContent = `${done}/10`;
+    document.getElementById('caFetchBar').style.width = `${done*10}%`;
+    document.getElementById('caFetchStatus').innerHTML = done<10
+      ? `<span class="spinner"></span> Fetched ${sym}...`
+      : `✓ Scan complete`;
+    const el = document.getElementById(`catick-${sym}`);
+    if(el){ el.style.color = 'var(--green)'; el.textContent = `✓ ${sym}`; }
+  };
+
+  // Fire all 10 in parallel
+  await Promise.allSettled(getStocksArr().map(async s => {
+    try{
+      const events = await fetchCAForStock(s.sym);
+      events.forEach(e => { e.sym = s.sym; caPendingReview.push(e); });
+    } catch(e){
+      // Stock had no data or parse error — skip silently
+    }
+    updateProgress(s.sym);
+  }));
+
+  btn.disabled = false; btn.innerHTML = '🤖 Fetch Corporate Actions';
+  document.getElementById('caFetchStatus').innerHTML = `✓ Found <strong style="color:var(--gold)">${caPendingReview.length} event(s)</strong> across all stocks`;
+
+  if(caPendingReview.length === 0){
+    toast('No corporate actions found in the past year for these stocks','warning');
+    return;
+  }
+
+  playBeep('sip');
+  renderCAReview();
+  document.getElementById('caReviewPanel').style.display = 'block';
+  document.getElementById('caReviewPanel').scrollIntoView({behavior:'smooth', block:'start'});
+  toast(`🤖 Found ${caPendingReview.length} corporate action(s) — please review and confirm`,'success');
+}
+
+function renderCAReview(){
+  const list = document.getElementById('caReviewList');
+  list.innerHTML = '';
+
+  if(caPendingReview.length === 0){
+    list.innerHTML = '<div style="color:var(--text3);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:8px">No events to review.</div>';
+    return;
+  }
+
+  caPendingReview.forEach((e, idx) => {
+    // Check if already logged
+    const alreadyLogged = getCALog().some(c =>
+      c.sym === e.sym && c.type === e.type &&
+      Math.abs(new Date(c.date) - new Date(e.date)) < 7*24*3600*1000
+    );
+
+    const icon = e.type==='dividend'?'💰':e.type==='bonus'?'🎁':'✂️';
+    const typeLabel = e.type==='dividend'?'DIVIDEND':e.type==='bonus'?'BONUS ISSUE':'STOCK SPLIT';
+    const confColor = e.confidence==='high'?'var(--green)':'var(--amber)';
+
+    // Calculate estimated impact
+    const unitsAtDate = getAdjustedUnits(e.sym, e.date);
+    let impactText = '', impactClass = 'div';
+    if(e.type==='dividend'){
+      const total = (e.divPerShare||0) * unitsAtDate;
+      impactText = unitsAtDate>0
+        ? `Your est. receipt: ₹${total.toLocaleString('en-IN',{maximumFractionDigits:2})} (${unitsAtDate.toFixed(2)} units × ₹${e.divPerShare})`
+        : `₹${e.divPerShare}/share — log SIP first to calc your receipt`;
+      impactClass = 'div';
+    } else if(e.type==='bonus'){
+      const r = parseRatio(e.ratio||'1:1');
+      const bonus = r ? (r[0]/r[1])*unitsAtDate : 0;
+      impactText = unitsAtDate>0
+        ? `+${bonus.toFixed(4)} free shares → ${(unitsAtDate+bonus).toFixed(4)} total units`
+        : `Ratio ${e.ratio} — log SIP first to calc your bonus shares`;
+      impactClass = 'bon';
+    } else if(e.type==='split'){
+      const r = parseRatio(e.ratio||'1:1');
+      const mult = r ? r[0]/r[1] : 1;
+      impactText = unitsAtDate>0
+        ? `${unitsAtDate.toFixed(4)} → ${(unitsAtDate*mult).toFixed(4)} units · price ÷${mult}`
+        : `×${mult} multiplier — log SIP first to calc your new units`;
+      impactClass = 'spl';
+    }
+
+    const item = document.createElement('div');
+    item.className = `ca-review-item${alreadyLogged?' ':''}`;
+    item.id = `ca-review-${idx}`;
+    item.innerHTML = `
+      <input type="checkbox" class="ca-review-cb" id="cacb-${idx}" ${alreadyLogged?'':'checked'}
+             onchange="document.getElementById('ca-review-${idx}').classList.toggle('checked', this.checked)"
+             ${alreadyLogged?'disabled':''}>
+      <div class="ca-review-icon">${icon}</div>
+      <div class="ca-review-body">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+          <span class="ca-review-sym">${e.sym}</span>
+          <span class="ca-${e.type==='dividend'?'div':e.type==='bonus'?'bon':'spl'}">${typeLabel}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)">${fmtD(e.date)}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${confColor};border:1px solid ${confColor};padding:1px 5px;border-radius:2px">${(e.confidence||'medium').toUpperCase()} CONFIDENCE</span>
+        </div>
+        <div class="ca-review-main">${e.description||typeLabel}</div>
+        ${e.type==='dividend'?`<div class="ca-review-detail">₹${e.divPerShare} per share · ${e.divType||'dividend'}</div>`:''}
+        ${e.type==='bonus'?`<div class="ca-review-detail">Bonus ratio: ${e.ratio} (${e.ratio} free shares for every shares held)</div>`:''}
+        ${e.type==='split'?`<div class="ca-review-detail">Split ratio: ${e.ratio}${e.preSplitPrice?` · Pre-split price: ₹${e.preSplitPrice}`:''}</div>`:''}
+        <div class="ca-review-impact ${impactClass}">${impactText}</div>
+        ${alreadyLogged?`<div class="ca-review-already">⚠ Already logged — unchecked to prevent duplicate</div>`:''}
+      </div>`;
+    // Initialise checked state styling
+    if(!alreadyLogged) item.classList.add('checked');
+    list.appendChild(item);
+  });
+}
+
+function dismissCAReview(){
+  document.getElementById('caReviewPanel').style.display = 'none';
+  caPendingReview = [];
+}
+
+function importCheckedCA(){
+  let imported = 0;
+  caPendingReview.forEach((e, idx) => {
+    const cb = document.getElementById(`cacb-${idx}`);
+    if(!cb || !cb.checked) return;
+
+    const unitsAtDate = getAdjustedUnits(e.sym, e.date);
+    const sipTxns = getTxnLog().filter(t=>t.sym===e.sym && t.date<=e.date);
+    const investedAtDate = sipTxns.reduce((a,t)=>a+t.amount,0);
+
+    if(e.type==='dividend'){
+      const totalReceived = (e.divPerShare||0) * Math.max(unitsAtDate, 0);
+      getCALog().push({
+        id: Date.now()+idx, type:'dividend', sym:e.sym, date:e.date,
+        divPerShare: e.divPerShare, divType: e.divType||'dividend',
+        totalReceived, unitsAtDate, notes: e.description||'AI auto-fetched'
+      });
+      imported++;
+    } else if(e.type==='bonus'){
+      const ratio = parseRatio(e.ratio||'1:1');
+      if(!ratio) return;
+      const [bonusFor, perHeld] = ratio;
+      const bonusShares = unitsAtDate>0 ? (bonusFor/perHeld)*unitsAtDate : 0;
+      getCALog().push({
+        id: Date.now()+idx, type:'bonus', sym:e.sym, date:e.date,
+        ratio:e.ratio, bonusShares, unitsHeldAtDate:unitsAtDate,
+        notes: e.description||'AI auto-fetched'
+      });
+      imported++;
+    } else if(e.type==='split'){
+      const ratio = parseRatio(e.ratio||'1:1');
+      if(!ratio) return;
+      const [newS,oldS] = ratio;
+      const multiplier = newS/oldS;
+      const postPrice = e.preSplitPrice>0 ? e.preSplitPrice/multiplier : 0;
+      getCALog().push({
+        id: Date.now()+idx, type:'split', sym:e.sym, date:e.date,
+        ratio:e.ratio, multiplier, preSplitPrice:e.preSplitPrice||0,
+        postSplitPrice:postPrice, unitsHeldAtDate:unitsAtDate,
+        notes: e.description||'AI auto-fetched'
+      });
+      imported++;
+    }
+  });
+
+  saveCALog();
+  dismissCAReview();
+  renderAll();
+  playBeep('success');
+  toast(`✅ ${imported} corporate action(s) imported successfully`,'success');
+  if(imported>0) switchTab('corporate');
+}
+
+// ── CA MODAL
+function setCAType(type){
+  caType = type;
+  ['dividend','bonus','split'].forEach(t=>{
+    document.getElementById(`caBtn-${t}`).classList.toggle('active', t===type);
+    document.getElementById(`ca-fields-${t}`).style.display = t===type ? '' : 'none';
+  });
+  updateCACalc();
+}
+
+function openCAModal(preSelectSym=null){
+  const sel = document.getElementById('caSym');
+  sel.innerHTML = '<option value="">— Select Stock —</option>';
+  getStocksArr().forEach(s=>{
+    const opt=document.createElement('option');
+    opt.value=s.sym; opt.textContent=`${s.sym} — ${s.name}`;
+    if(preSelectSym && s.sym===preSelectSym) opt.selected=true;
+    sel.appendChild(opt);
+  });
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('caDate').value = today;
+  document.getElementById('caDivPerShare').value = '';
+  document.getElementById('caBonusRatio').value = '';
+  document.getElementById('caSplitRatio').value = '';
+  document.getElementById('caSplitPrePrice').value = '';
+  document.getElementById('caNotes').value = '';
+  document.getElementById('caPreview').textContent = 'Select a stock and fill details to see impact.';
+  setCAType(caType);
+  if(preSelectSym) updateCACalc();
+  openM('caModal');
+}
+
+function parseRatio(str){
+  // Parse "1:2" or "5:1" → returns [numerator, denominator]
+  const parts = str.replace(/\s/g,'').split(':');
+  if(parts.length!==2) return null;
+  const a=parseFloat(parts[0]), b=parseFloat(parts[1]);
+  if(isNaN(a)||isNaN(b)||b===0) return null;
+  return [a,b];
+}
+
+function updateCACalc(){
+  const sym = document.getElementById('caSym').value;
+  const date = document.getElementById('caDate').value;
+  if(!sym||!date){ document.getElementById('caPreview').textContent='Select a stock and fill details.'; return; }
+
+  const unitsAtDate = getAdjustedUnits(sym, date);
+  const sipTxnsAtDate = getTxnLog().filter(t=>t.sym===sym && t.date<=date);
+  const investedAtDate = sipTxnsAtDate.reduce((a,t)=>a+t.amount,0);
+
+  if(caType==='dividend'){
+    const dps = parseFloat(document.getElementById('caDivPerShare').value)||0;
+    if(!dps){ document.getElementById('caPreview').textContent=`You hold ${unitsAtDate.toFixed(4)} units as of this date. Enter dividend per share.`; return; }
+    const total = dps * unitsAtDate;
+    document.getElementById('caPreview').innerHTML =
+      `<span>Units held on ex-date:</span> ${unitsAtDate.toFixed(4)}<br>
+       <span>Dividend per share:</span> ₹${dps.toFixed(2)}<br>
+       <span style="color:var(--green);font-size:14px;font-weight:600">Total dividend received: ₹${total.toLocaleString('en-IN',{minimumFractionDigits:2})}</span><br>
+       <span>Note:</span> Dividends are <em>taxable</em> at your income slab rate (TDS @10% if >₹5,000/yr from one company).`;
+  } else if(caType==='bonus'){
+    const ratioStr = document.getElementById('caBonusRatio').value;
+    document.getElementById('caBonusHeld').value = unitsAtDate>0 ? unitsAtDate.toFixed(4)+' shares' : '—';
+    const ratio = parseRatio(ratioStr);
+    if(!ratio){ document.getElementById('caPreview').textContent=`You hold ${unitsAtDate.toFixed(4)} units. Enter bonus ratio (e.g. 1:2).`; return; }
+    const [bonusFor, perHeld] = ratio;
+    const bonusShares = (bonusFor/perHeld) * unitsAtDate;
+    const newTotal = unitsAtDate + bonusShares;
+    const newAvg = investedAtDate>0 ? investedAtDate/newTotal : 0;
+    document.getElementById('caPreview').innerHTML =
+      `<span>Units held on record date:</span> ${unitsAtDate.toFixed(4)}<br>
+       <span>Bonus ratio:</span> ${ratioStr} (${bonusFor} free share per ${perHeld} held)<br>
+       <span style="color:var(--blue);font-size:14px;font-weight:600">Bonus shares received: +${bonusShares.toFixed(4)}</span><br>
+       <span>New total units:</span> ${newTotal.toFixed(4)}<br>
+       <span>New average cost:</span> ₹${newAvg.toFixed(2)} per share (drops from ₹${investedAtDate>0?(investedAtDate/unitsAtDate).toFixed(2):'—'})<br>
+       <span>Note:</span> Bonus shares have ₹0 cost basis for tax. Gains on bonus shares are fully taxable.`;
+  } else if(caType==='split'){
+    const ratioStr = document.getElementById('caSplitRatio').value;
+    const prePrice = parseFloat(document.getElementById('caSplitPrePrice').value)||0;
+    const ratio = parseRatio(ratioStr);
+    if(!ratio){ document.getElementById('caPreview').textContent=`You hold ${unitsAtDate.toFixed(4)} units. Enter split ratio (e.g. 5:1).`; return; }
+    const [newShares, oldShares] = ratio;
+    const multiplier = newShares/oldShares;
+    const newUnits = unitsAtDate * multiplier;
+    const newAvg = investedAtDate>0 ? investedAtDate/newUnits : 0;
+    const postPrice = prePrice>0 ? prePrice/multiplier : 0;
+    document.getElementById('caPreview').innerHTML =
+      `<span>Units before split:</span> ${unitsAtDate.toFixed(4)}<br>
+       <span>Split ratio:</span> ${ratioStr} (×${multiplier} multiplier)<br>
+       <span style="color:var(--amber);font-size:14px;font-weight:600">New units after split: ${newUnits.toFixed(4)}</span><br>
+       ${prePrice>0?`<span>Pre-split price:</span> ₹${prePrice.toFixed(2)} → <span style="color:var(--gold)">Post-split price: ₹${postPrice.toFixed(2)}</span><br>`:''}
+       <span>New average cost:</span> ₹${newAvg.toFixed(2)} per share<br>
+       <span>Note:</span> Split does not create a taxable event. Your total investment value stays unchanged.`;
+  }
+}
+
+function saveCA(){
+  const sym = document.getElementById('caSym').value;
+  const date = document.getElementById('caDate').value;
+  const notes = document.getElementById('caNotes').value;
+  if(!sym||!date){ toast('Please fill stock and date','warning'); return; }
+
+  const unitsAtDate = getAdjustedUnits(sym, date);
+  const sipTxns = getTxnLog().filter(t=>t.sym===sym && t.date<=date);
+  const investedAtDate = sipTxns.reduce((a,t)=>a+t.amount,0);
+
+  if(caType==='dividend'){
+    const dps = parseFloat(document.getElementById('caDivPerShare').value);
+    const divType = document.getElementById('caDivType').value;
+    if(!dps||dps<=0){ toast('Enter dividend per share','warning'); return; }
+    const totalReceived = dps * unitsAtDate;
+    getCALog().push({id:Date.now(),type:'dividend',sym,date,divPerShare:dps,divType,totalReceived,unitsAtDate,notes});
+    saveCALog(); closeM('caModal'); playBeep('success');
+    toast(`💰 ${sym} dividend logged — ₹${totalReceived.toLocaleString('en-IN',{maximumFractionDigits:2})} received`,'success');
+
+  } else if(caType==='bonus'){
+    const ratioStr = document.getElementById('caBonusRatio').value.trim();
+    const ratio = parseRatio(ratioStr);
+    if(!ratio){ toast('Enter valid bonus ratio (e.g. 1:2)','warning'); return; }
+    const [bonusFor,perHeld] = ratio;
+    const bonusShares = (bonusFor/perHeld)*unitsAtDate;
+    getCALog().push({id:Date.now(),type:'bonus',sym,date,ratio:ratioStr,bonusShares,unitsHeldAtDate:unitsAtDate,notes});
+    saveCALog(); closeM('caModal'); playBeep('success');
+    toast(`🎁 ${sym} bonus logged — +${bonusShares.toFixed(4)} free shares received`,'success');
+
+  } else if(caType==='split'){
+    const ratioStr = document.getElementById('caSplitRatio').value.trim();
+    const prePrice = parseFloat(document.getElementById('caSplitPrePrice').value)||0;
+    const ratio = parseRatio(ratioStr);
+    if(!ratio){ toast('Enter valid split ratio (e.g. 5:1)','warning'); return; }
+    const [newS,oldS] = ratio;
+    const multiplier = newS/oldS;
+    const postPrice = prePrice>0 ? prePrice/multiplier : 0;
+    getCALog().push({id:Date.now(),type:'split',sym,date,ratio:ratioStr,multiplier,preSplitPrice:prePrice,postSplitPrice:postPrice,unitsHeldAtDate:unitsAtDate,notes});
+    saveCALog(); closeM('caModal'); playBeep('success');
+    toast(`✂️ ${sym} split logged — ×${multiplier} multiplier, units now ${(unitsAtDate*multiplier).toFixed(4)}`,'success');
+  }
+  renderAll();
+}
+
+function clearAllCA(){if(confirm('Clear all corporate action logs?')){setCALog([]);saveCALog();renderAll();toast('Corporate actions cleared','warning');}}
+function deleteCA(id){setCALog(getCALog().filter(c=>c.id!==id));saveCALog();renderAll();toast('Corporate action deleted','warning');}
+
+// ── RENDER CORPORATE ACTIONS TAB
+function renderCorporateTab(){
+  // Summary strip
+  const totalDiv = getCALog().filter(c=>c.type==='dividend').reduce((a,c)=>a+c.totalReceived,0);
+  const totalBonus = getCALog().filter(c=>c.type==='bonus').reduce((a,c)=>a+c.bonusShares,0);
+  const totalSplits = getCALog().filter(c=>c.type==='split').length;
+  document.getElementById('ca-div-total').textContent = totalDiv>0?('₹'+(totalDiv/1e3).toFixed(1)+'K'):'₹0';
+  document.getElementById('ca-bonus-total').textContent = totalBonus.toFixed(2);
+  document.getElementById('ca-split-total').textContent = totalSplits;
+  document.getElementById('ca-count-total').textContent = getCALog().length;
+
+  // Per-stock cards
+  const grid = document.getElementById('caStockGrid'); grid.innerHTML='';
+  getStocksArr().forEach(s=>{
+    const stockCA = getCALog().filter(c=>c.sym===s.sym).sort((a,b)=>b.date.localeCompare(a.date));
+    const divTotal = stockCA.filter(c=>c.type==='dividend').reduce((a,c)=>a+c.totalReceived,0);
+    const bonusTotal = stockCA.filter(c=>c.type==='bonus').reduce((a,c)=>a+c.bonusShares,0);
+    const splitCount = stockCA.filter(c=>c.type==='split').length;
+    const adjUnits = getFullAdjustedUnits(s.sym);
+    const sipTxns = getTxnLog().filter(t=>t.sym===s.sym);
+    const invested = sipTxns.reduce((a,t)=>a+t.amount,0);
+    const avgCost = adjUnits>0&&invested>0 ? invested/adjUnits : 0;
+
+    const card = document.createElement('div');
+    card.className = 'portfolio-card';
+    card.innerHTML = `
+      <div class="pc-header">
+        <div><div class="pc-sym">${s.sym}</div><div class="pc-name">${s.name}</div></div>
+        <button class="bsm b-log" onclick="openCAModal('${s.sym}')" style="font-size:10px">＋ Add</button>
+      </div>
+      <div class="pc-body">
+        <div class="pc-row"><span class="lbl">💰 Dividends</span><span class="val" style="color:var(--green)">${divTotal>0?'₹'+divTotal.toLocaleString('en-IN',{maximumFractionDigits:2}):'—'}</span></div>
+        <div class="pc-row"><span class="lbl">🎁 Bonus Shares</span><span class="val" style="color:var(--blue)">${bonusTotal>0?'+'+bonusTotal.toFixed(4):'—'}</span></div>
+        <div class="pc-row"><span class="lbl">✂️ Splits</span><span class="val" style="color:var(--amber)">${splitCount>0?splitCount+' event(s)':'—'}</span></div>
+        <div class="pc-row"><span class="lbl">Total Units (adjusted)</span><span class="val gold">${adjUnits>0?adjUnits.toFixed(4):'—'}</span></div>
+        <div class="pc-row"><span class="lbl">Avg Cost (post CA)</span><span class="val">${avgCost>0?'₹'+avgCost.toFixed(2):'—'}</span></div>
+        ${stockCA.length>0?`
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+          ${stockCA.slice(0,3).map(c=>{
+            const icon = c.type==='dividend'?'💰':c.type==='bonus'?'🎁':'✂️';
+            const detail = c.type==='dividend'?`₹${c.divPerShare}/sh · total ₹${c.totalReceived.toFixed(0)}`
+              :c.type==='bonus'?`${c.ratio} ratio · +${c.bonusShares.toFixed(4)} shares`
+              :`${c.ratio} split · ×${c.multiplier}`;
+            return `<div class="ca-event-row"><div class="ca-event-icon">${icon}</div><div class="ca-event-detail"><div class="d">${detail}</div><div class="meta">${fmtD(c.date)}${c.notes?' · '+c.notes:''}</div></div></div>`;
+          }).join('')}
+          ${stockCA.length>3?`<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-top:6px">+${stockCA.length-3} more — see full log below</div>`:''}
+        </div>`:'<div style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">No corporate actions logged yet</div>'}
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  // Full CA table
+  const tb = document.getElementById('caBody'); tb.innerHTML='';
+  if(!getCALog().length){
+    tb.innerHTML=`<tr><td colspan="8" class="txn-empty">No corporate actions logged. Click "＋ Add Corporate Action" to start.</td></tr>`;
+    return;
+  }
+  const sorted = [...getCALog()].sort((a,b)=>b.date.localeCompare(a.date));
+  sorted.forEach(c=>{
+    const sipTxns = getTxnLog().filter(t=>t.sym===c.sym && t.date<=c.date);
+    const invested = sipTxns.reduce((a,t)=>a+t.amount,0);
+    let typeTag='', details='', impact='', avgAfter='—';
+
+    if(c.type==='dividend'){
+      typeTag=`<span class="ca-div">DIVIDEND</span>`;
+      details=`₹${c.divPerShare.toFixed(2)}/share · ${c.divType}`;
+      impact=`<span style="color:var(--green)">+₹${c.totalReceived.toLocaleString('en-IN',{maximumFractionDigits:2})} cash</span>`;
+      const adjU = getAdjustedUnits(c.sym, c.date);
+      avgAfter = adjU>0&&invested>0 ? '₹'+(invested/adjU).toFixed(2)+' (unchanged)' : '—';
+    } else if(c.type==='bonus'){
+      typeTag=`<span class="ca-bon">BONUS</span>`;
+      details=`${c.ratio} ratio · on ${c.unitsHeldAtDate.toFixed(4)} units`;
+      const newTotal = c.unitsHeldAtDate + c.bonusShares;
+      impact=`<span style="color:var(--blue)">+${c.bonusShares.toFixed(4)} free shares → ${newTotal.toFixed(4)} total</span>`;
+      avgAfter = invested>0&&newTotal>0 ? '₹'+(invested/newTotal).toFixed(2)+' (reduced)' : '—';
+    } else if(c.type==='split'){
+      typeTag=`<span class="ca-spl">SPLIT</span>`;
+      details=`${c.ratio} split · pre-price ₹${c.preSplitPrice||'—'}`;
+      const newUnits = c.unitsHeldAtDate * c.multiplier;
+      impact=`<span style="color:var(--amber)">×${c.multiplier} → ${newUnits.toFixed(4)} units · post-price ₹${c.postSplitPrice>0?c.postSplitPrice.toFixed(2):'—'}</span>`;
+      avgAfter = invested>0&&newUnits>0 ? '₹'+(invested/newUnits).toFixed(2)+' (reduced)' : '—';
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML=`
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${fmtD(c.date)}</td>
+      <td><span class="txn-sym">${c.sym}</span></td>
+      <td>${typeTag}</td>
+      <td style="font-size:12px;color:var(--text2)">${details}</td>
+      <td style="font-size:12px">${impact}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">${avgAfter}</td>
+      <td style="font-size:11px;color:var(--text3)">${c.notes||'—'}</td>
+      <td><button class="bsm br" onclick="deleteCA(${c.id})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function getTotalStats(){
+  const base=3000000;
+  let totalInvested=base,totalValue=base;
+  getStocksArr().forEach(s=>{
+    const st=getStockStats(s.sym);
+    totalInvested+=st.invested;
+    totalValue+=st.currentValue;
+  });
+  return{totalInvested,totalValue,pnl:totalValue-totalInvested,pnlPct:((totalValue-totalInvested)/totalInvested)*100};
+}
+
+// ════════════════════════════════════════════
+// RENDER ENGINE
+// ════════════════════════════════════════════
+function renderAll(){
+  renderStatStrip();
+  renderSipTable();
+  renderTimeline();
+  renderPortfolio();
+  renderTxnTable();
+  renderBigChart();
+  renderCorporateTab();
+}
+
+function fmtRs(v){if(Math.abs(v)>=1e7)return'₹'+(v/1e7).toFixed(2)+'Cr';if(Math.abs(v)>=1e5)return'₹'+(v/1e5).toFixed(2)+'L';return'₹'+Math.round(v).toLocaleString('en-IN')}
+function capTag(c){const m={L:'cap-L',M:'cap-M',S:'cap-S',X:'cap-X'},lb={L:'LARGE',M:'MID',S:'SMALL',X:'MICRO'};return`<span class="cap-tag ${m[c]||'cap-L'}">${lb[c]||c}</span>`}
+function rCls(r){return r<=4?'r-l':r<=6?'r-m':'r-h'}
+
+function renderStatStrip(){
+  const tot=getTotalStats();
+  const totalSip=getStocksArr().reduce((a,s)=>a+s.amt,0);
+  document.getElementById('sTotalInvested').textContent=fmtRs(tot.totalInvested);
+  document.getElementById('sTotalSub').textContent=getTxnLog().length>0?`${getTxnLog().length} SIPs logged`:'Base corpus only';
+  document.getElementById('sCurrentValue').textContent=fmtRs(tot.totalValue);
+  document.getElementById('sValueSub').textContent=getTxnLog().length>0?'At logged prices':'Log SIPs to track';
+  const pnlEl=document.getElementById('sPnL');
+  pnlEl.textContent=(tot.pnl>=0?'+':'')+fmtRs(tot.pnl);
+  pnlEl.style.color=tot.pnl>0?'var(--green)':tot.pnl<0?'var(--red)':'var(--text3)';
+  document.getElementById('sPnLSub').textContent=(tot.pnlPct>=0?'+':'')+tot.pnlPct.toFixed(2)+'% overall';
+  document.getElementById('sMonthSip').textContent=fmtRs(totalSip);
+  // Next SIP
+  let minDays=999,nextS=null;
+  getStocksArr().forEach(s=>{if(s.status!=='active')return;const d=daysUntil(nextDate(s.day));if(d<minDays){minDays=d;nextS=s;}});
+  if(nextS){
+    document.getElementById('sNextSip').textContent=nextS.sym;
+    document.getElementById('sNextSipSub').textContent=`${fmtD(nextDate(nextS.day))} · ₹${nextS.amt.toLocaleString('en-IN')}`;
+  }
+}
+
+function renderSipTable(){
+  const tb=document.getElementById('sipBody');tb.innerHTML='';
+  getStocksArr().forEach((s,i)=>{
+    const nd=nextDate(s.day),days=daysUntil(nd);
+    const st=getStockStats(s.sym);
+    const isDue=days===0;
+    const isLogged=getTxnLog().some(t=>t.sym===s.sym&&dateKey(t.date)===todayKey());
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">${String(i+1).padStart(2,'0')}</td>
+      <td><div class="t-sym">${s.sym}</div><div class="t-nm">${s.name}</div><div class="t-sc">${s.sec} · ${s.sig}</div></td>
+      <td>${capTag(s.cap)}</td>
+      <td><div class="amt-c">₹${s.amt.toLocaleString('en-IN')}</div></td>
+      <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${s.day}th monthly</div></td>
+      <td>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${isDue?'var(--gold)':'var(--text2)'}">${fmtD(nd)}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${days<=3?'var(--gold)':'var(--text3)'}">${days<=0?'⚡ TODAY':days+' days'}</div>
+      </td>
+      <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${st.avgCost>0?'var(--gold)':'var(--text3)'}">${st.avgCost>0?'₹'+st.avgCost.toFixed(2):'—'}</div></td>
+      <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${st.units>0?st.units.toFixed(4):'—'}</div></td>
+      <td><span class="status-pill ${isDue&&!isLogged?'sp-due':s.status==='active'?'sp-a':'sp-p'}">${isDue&&!isLogged?'⚡ DUE TODAY':s.status==='active'?'● ACTIVE':'⏸ PAUSED'}</span></td>
+      <td><span class="rn ${rCls(s.risk)}">${s.risk}</span></td>
+      <td>
+        <div class="ab">
+          <button class="bsm b-log" onclick="openLogModal('${s.sym}')">✏️ Log</button>
+          <button class="bsm bn" onclick="checkOne('${s.sym}')">📡</button>
+          <button class="bsm bp" onclick="toggleP(${s.id})">${s.status==='paused'?'▶':'⏸'}</button>
+          <button class="bsm br" onclick="openRep('${s.sym}')">↺</button>
+        </div>
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function renderTimeline(){
+  const g=document.getElementById('tlGrid');g.innerHTML='';
+  const in30=new Date(new Date().getTime()+30*24*3600*1000);
+  const today=todayKey();
+  const evts=[];
+  getStocksArr().forEach(s=>{if(s.status==='paused')return;const d=nextDate(s.day);if(d<=in30)evts.push({d,s});});
+  evts.sort((a,b)=>a.d-b.d);
+  evts.forEach(ev=>{
+    const days=daysUntil(ev.d);
+    const isToday=days<=0;
+    const isLogged=getTxnLog().some(t=>t.sym===ev.s.sym&&dateKey(t.date)===today);
+    const isOverdue=isToday&&!isLogged&&new Date().getHours()>=20;
+    const div=document.createElement('div');
+    div.className='tl-card'+(isLogged?' tl-logged':isOverdue?' tl-overdue':isToday?' tl-today':'');
+    div.innerHTML=`
+      <div class="tl-date">${fmtD(ev.d)}
+        ${isLogged?'<span class="logged-tag">✓ DONE</span>':isOverdue?'<span class="overdue-tag">OVERDUE</span>':isToday?'<span class="today-tag">TODAY</span>':''}
+      </div>
+      <div class="tl-tick" style="color:${isLogged?'var(--green)':isOverdue?'var(--red)':'var(--text)'}">${ev.s.sym}</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px">${ev.s.name.substring(0,22)}</div>
+      <div class="tl-amt">₹${ev.s.amt.toLocaleString('en-IN')}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px">${days<=0?'Due today':days+' days'}</div>`;
+    div.onclick=()=>{if(!isLogged)openLogModal(ev.s.sym);else toast(`${ev.s.sym} already logged today ✓`,'success');};
+    g.appendChild(div);
+  });
+}
+
+function renderPortfolio(){
+  // Update grand summary
+  const tot=getTotalStats();
+  document.getElementById('gs-invested').textContent=fmtRs(tot.totalInvested);
+  document.getElementById('gs-value').textContent=fmtRs(tot.totalValue);
+  const gpnl=document.getElementById('gs-pnl');
+  gpnl.textContent=(tot.pnl>=0?'+':'')+fmtRs(tot.pnl);
+  gpnl.style.color=tot.pnl>0?'var(--green)':tot.pnl<0?'var(--red)':'var(--text3)';
+  document.getElementById('gs-pnl-pct').textContent=(tot.pnlPct>=0?'+':'')+tot.pnlPct.toFixed(2)+'% overall';
+  document.getElementById('gs-txns').textContent=getTxnLog().length;
+
+  // Per-stock cards
+  const grid=document.getElementById('portfolioGrid');grid.innerHTML='';
+  getStocksArr().forEach(s=>{
+    const st=getStockStats(s.sym);
+    const hasTxns=st.txns&&st.txns.length>0;
+    const pnlCls=st.pnl>0?'pos':st.pnl<0?'neg':'zero';
+    const card=document.createElement('div');
+    card.className='portfolio-card';
+    card.innerHTML=`
+      <div class="pc-header">
+        <div>
+          <div class="pc-sym">${s.sym}</div>
+          <div class="pc-name">${s.name}</div>
+        </div>
+        <div>
+          <div class="pc-pnl ${pnlCls}">${hasTxns?(st.pnl>=0?'+':'')+fmtRs(st.pnl):'No data'}</div>
+          ${hasTxns?`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${st.pnl>=0?'var(--green)':'var(--red)'}">${st.pnl>=0?'+':''}${st.pnlPct.toFixed(2)}%</div>`:''}
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="pc-row"><span class="lbl">Invested</span><span class="val">${hasTxns?fmtRs(st.invested):'—'}</span></div>
+        <div class="pc-row"><span class="lbl">Current Value</span><span class="val gold">${hasTxns?fmtRs(st.currentValue):'—'}</span></div>
+        <div class="pc-row"><span class="lbl">Dividends Recd</span><span class="val" style="color:var(--green)">${st.dividends>0?'₹'+st.dividends.toLocaleString('en-IN',{maximumFractionDigits:0}):'—'}</span></div>
+        <div class="pc-row"><span class="lbl">Avg Cost</span><span class="val">${hasTxns?'₹'+st.avgCost.toFixed(2):'—'}</span></div>
+        <div class="pc-row"><span class="lbl">Total Units (adj)</span><span class="val">${hasTxns?st.units.toFixed(4):'—'}</span></div>
+        <div class="pc-row"><span class="lbl">Last Price</span><span class="val">${hasTxns ? (() => {
+          const lp = livePrices[s.sym];
+          if(lp) {
+            const col = lp.change>=0?'var(--green)':'var(--red)';
+            const arrow = lp.change>=0?'▲':'▼';
+            return `<span style="color:var(--gold2)">₹${lp.price.toLocaleString('en-IN')}</span> <span style="font-size:10px;color:${col}">${arrow}${Math.abs(lp.changePct).toFixed(2)}%</span> <span style="font-size:9px;color:var(--green);font-family:'JetBrains Mono',monospace">LIVE</span>`;
+          }
+          return `₹${st.lastPrice.toFixed(2)} <span style="font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace">(buy price)</span>`;
+        })() : '—'}</span></div>
+        <div class="pc-chart">
+          ${hasTxns?`<canvas id="chart-${s.sym}"></canvas>`:`<div class="pc-no-data">NO DATA YET · LOG SIPs TO TRACK</div>`}
+        </div>
+        ${hasTxns?`<div class="pc-log-count">${st.txns.length} SIP(s) logged</div>`:''}
+      </div>`;
+    grid.appendChild(card);
+    if(hasTxns){
+      setTimeout(()=>renderStockChart(s.sym,st.txns),50);
+    }
+  });
+}
+
+function renderStockChart(sym,txns){
+  const canvas=document.getElementById(`chart-${sym}`);
+  if(!canvas)return;
+  if(stockCharts[sym])stockCharts[sym].destroy();
+  const sorted=[...txns].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let cumUnits=0,cumInvested=0;
+  const labels=sorted.map(t=>{cumUnits+=t.units;cumInvested+=t.amount;return fmtDShort(t.date);});
+  const values=sorted.map((t,i)=>{
+    const u=sorted.slice(0,i+1).reduce((a,x)=>a+x.units,0);
+    return u*t.price;
+  });
+  const invested_line=sorted.map((_,i)=>sorted.slice(0,i+1).reduce((a,x)=>a+x.amount,0));
+  stockCharts[sym]=new Chart(canvas,{
+    type:'line',
+    data:{labels,
+      datasets:[
+        {label:'Value',data:values,borderColor:'#f0a830',borderWidth:1.5,pointRadius:2,fill:true,backgroundColor:'rgba(240,168,48,0.1)',tension:0.3},
+        {label:'Invested',data:invested_line,borderColor:'#4a5568',borderWidth:1,pointRadius:0,fill:false,borderDash:[3,3],tension:0.3}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:ctx=>`${ctx.dataset.label}: ₹${Math.round(ctx.raw).toLocaleString('en-IN')}`}}},scales:{x:{display:false},y:{display:false}}}
+  });
+}
+
+function renderBigChart(){
+  const canvas=document.getElementById('bigChart');
+  if(!canvas)return;
+  if(bigChartInstance)bigChartInstance.destroy();
+  if(getTxnLog().length===0){
+    bigChartInstance=new Chart(canvas,{type:'line',data:{labels:['Start'],datasets:[{label:'Portfolio Value',data:[3000000],borderColor:'#f0a830',borderWidth:2,pointRadius:4,fill:true,backgroundColor:'rgba(240,168,48,0.1)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5568'}},y:{ticks:{color:'#4a5568',callback:v=>'₹'+(v/1e5).toFixed(0)+'L'}}}}});
+    return;
+  }
+  // Build chronological total value series
+  const allDates=[...new Set(getTxnLog().map(t=>t.date))].sort();
+  const labels=allDates.map(fmtDShort);
+  const totalValues=allDates.map(d=>{
+    let val=3000000;
+    getStocksArr().forEach(s=>{
+      const prevTxns=getTxnLog().filter(t=>t.sym===s.sym&&t.date<=d);
+      if(!prevTxns.length)return;
+      const units=prevTxns.reduce((a,t)=>a+t.units,0);
+      const lastP=prevTxns[prevTxns.length-1].price;
+      val+=units*lastP;
+    });
+    return val;
+  });
+  const investedValues=allDates.map(d=>{
+    let v=3000000;
+    getTxnLog().filter(t=>t.date<=d).forEach(t=>v+=t.amount);
+    return v;
+  });
+  bigChartInstance=new Chart(canvas,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Portfolio Value',data:totalValues,borderColor:'#f0a830',borderWidth:2,pointRadius:3,fill:true,backgroundColor:'rgba(240,168,48,0.08)',tension:0.4},
+      {label:'Amount Invested',data:investedValues,borderColor:'#4a5568',borderWidth:1.5,pointRadius:2,fill:false,borderDash:[4,4],tension:0.4}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{color:'#94a3b8',font:{size:11,family:'JetBrains Mono'}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtRs(ctx.raw)}`}}},
+      scales:{x:{ticks:{color:'#4a5568',font:{size:10,family:'JetBrains Mono'}}},y:{ticks:{color:'#4a5568',font:{size:10,family:'JetBrains Mono'},callback:v=>fmtRs(v)}}}}
+  });
+}
+
+function renderTxnTable(){
+  const tb=document.getElementById('txnBody');tb.innerHTML='';
+  if(!getTxnLog().length){tb.innerHTML=`<tr><td colspan="10" class="txn-empty">No transactions logged yet. Click ✏️ Log SIP to get started.</td></tr>`;return;}
+  const sorted=[...getTxnLog()].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  sorted.forEach(t=>{
+    const prevTxns=getTxnLog().filter(x=>x.sym===t.sym&&new Date(x.date)<=new Date(t.date));
+    const cumUnits=prevTxns.reduce((a,x)=>a+x.units,0);
+    const cumInvested=prevTxns.reduce((a,x)=>a+x.amount,0);
+    const avgCost=cumInvested/cumUnits;
+    // Use live price if available, else fallback to buy price
+    const liveP = getLivePrice(t.sym);
+    const curPrice = liveP || t.currentPrice || t.price;
+    const isLive = !!liveP;
+    const curVal=t.units*curPrice;
+    const pnl=curVal-t.amount;
+    const pnlPct = t.amount>0 ? (pnl/t.amount)*100 : 0;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${fmtD(t.date)}</td>
+      <td><span class="txn-sym">${t.sym}</span></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px">₹${t.amount.toLocaleString('en-IN')}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold2)">₹${t.price.toFixed(2)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px">${t.units.toFixed(4)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">₹${avgCost.toFixed(2)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px">₹${curPrice.toFixed(2)}${isLive?'<span style="font-size:8px;color:var(--green);margin-left:4px">LIVE</span>':'<span style="font-size:8px;color:var(--text3);margin-left:4px">BUY</span>'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}₹${Math.round(pnl).toLocaleString('en-IN')}<span style="font-size:10px;margin-left:4px">(${pnl>=0?'+':''}${pnlPct.toFixed(1)}%)</span></td>
+      <td style="font-size:11px;color:var(--text3)">${t.notes||'—'}</td>
+      <td><button class="bsm br" onclick="deleteTxn(${t.id})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// ════════════════════════════════════════════
+// ALERT SCAN
+// ════════════════════════════════════════════
+const scanSlots={};
+function buildPB(done,total){
+  const pct=Math.round(done/total*100);
+  return`<div id="scanProgress" style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)"><span class="spinner"></span> Scanning all 10 stocks in parallel...</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">${done}/${total} done</span>
+    </div>
+    <div style="height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:10px">
+      <div style="height:100%;width:${pct}%;background:var(--gold);border-radius:2px;transition:width .3s"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${getStocksArr().map(s=>`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${done>0&&Array.from(document.querySelectorAll('#alertFeed .a-tick')).some(el=>el.textContent===s.sym)?'var(--green)':'var(--gold)'};letter-spacing:.06em">◌ ${s.sym}</span>`).join('')}
+    </div>
+  </div>`;
+}
+
+async function fetchAlertForStock(sym){
+  const ctx=getCtx()[sym]||'';
+  const prompt=`Goldman Sachs equity analyst. 9 March 2026, Q3 FY26 India. Generate ONE alert for ${sym} NSE India. Context: ${ctx}. Rules: sev=critical|warning|info|ok. type=SELL|WATCH|HOLD|BUY. head=max 12 words with a specific number. detail=2-3 sentences with actual %/figures. act=1-2 sentences for SIP investor. aLbl=3-5 words. Return ONLY raw JSON no markdown: {"sym":"${sym}","sev":"info","type":"HOLD","head":"...","detail":"...","act":"...","aLbl":"..."}`;
+  const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,messages:[{role:"user",content:prompt}]})});
+  const data=await resp.json();
+  const raw=data.content.map(b=>b.text||'').join('').trim().replace(/```json|```/g,'').trim();
+  return JSON.parse(raw);
+}
+
+async function checkAllNews(){
+  const btn=document.getElementById('btnScan');
+  const feed=document.getElementById('alertFeed');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Scanning 10 stocks...';
+  feed.innerHTML=buildPB(0,10);
+  const doneSyms=new Set();
+  getStocksArr().forEach(s=>{
+    const div=document.createElement('div');div.id=`slot-${s.sym}`;div.className='alert-item';div.style.opacity='0.35';
+    div.innerHTML=`<div class="a-sev sv-i" style="background:var(--border2)"></div><div class="a-body"><div class="a-meta"><span class="a-tick">${s.sym}</span><span class="a-type t-watch" style="opacity:.5">PENDING</span></div><div class="a-head" style="color:var(--text3)"><span class="spinner"></span> Awaiting scan...</div></div>`;
+    feed.appendChild(div);scanSlots[s.sym]=div;
+  });
+  await Promise.allSettled(getStocksArr().map(async s=>{
+    let alert;
+    try{alert=await fetchAlertForStock(s.sym);if(!alert.sym||!alert.head)throw new Error('bad');}
+    catch(e){alert={...getFallback()[s.sym],sym:s.sym};}
+    doneSyms.add(s.sym);
+    fillSlot(s.sym,alert);
+    const pb=document.getElementById('scanProgress');
+    if(pb)pb.outerHTML=buildPB(doneSyms.size,10);
+    if(alert.sev==='critical')toast(`⚠️ CRITICAL: ${s.sym} — ${alert.head}`,'critical');
+  }));
+  setTimeout(()=>{const pb=document.getElementById('scanProgress');if(pb)pb.remove();},500);
+  btn.disabled=false;btn.innerHTML='🔍 Scan All 10 Stocks';
+  toast('✓ All 10 stocks scanned','success');
+}
+
+function fillSlot(sym,alert){
+  const slot=scanSlots[sym]||document.getElementById(`slot-${sym}`);
+  if(!slot){return;}
+  const smap={critical:'sv-c',warning:'sv-w',info:'sv-i',ok:'sv-o'};
+  const tmap={SELL:'t-sell',WATCH:'t-hold',HOLD:'t-hold',BUY:'t-buy','HOLD/ADD':'t-hold'};
+  const t=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  slot.style.opacity='1';slot.style.animation='sIn .4s ease both';
+  slot.innerHTML=`<div class="a-sev ${smap[alert.sev]||'sv-i'}"></div><div class="a-body"><div class="a-meta"><span class="a-tick">${alert.sym}</span><span class="a-type ${tmap[alert.type]||'t-watch'}">${alert.type}</span><span class="a-time">${t}</span></div><div class="a-head">${alert.head}</div><div class="a-act">→ ${alert.act}</div></div>`;
+  slot.onclick=()=>openAlertM(alert);
+}
+
+async function checkOne(sym){
+  switchTab('alerts');
+  const feed=document.getElementById('alertFeed');
+  if(feed.querySelector('.a-empty'))feed.innerHTML='';
+  const ph=document.createElement('div');ph.className='alert-item';
+  ph.innerHTML=`<div class="a-sev sv-i"></div><div class="a-body"><div class="a-meta"><span class="a-tick">${sym}</span><span class="a-type t-watch">SCANNING</span></div><div class="a-head"><span class="spinner"></span> Fetching intelligence for ${sym}...</div></div>`;
+  feed.insertBefore(ph,feed.firstChild);
+  let alert;
+  try{alert=await fetchAlertForStock(sym);if(!alert.sym)throw new Error();}
+  catch(e){alert={...getFallback()[sym],sym};}
+  ph.remove();
+  const smap={critical:'sv-c',warning:'sv-w',info:'sv-i',ok:'sv-o'};
+  const tmap={SELL:'t-sell',WATCH:'t-hold',HOLD:'t-hold',BUY:'t-buy'};
+  const t=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  const div=document.createElement('div');div.className='alert-item';
+  div.innerHTML=`<div class="a-sev ${smap[alert.sev]||'sv-i'}"></div><div class="a-body"><div class="a-meta"><span class="a-tick">${alert.sym}</span><span class="a-type ${tmap[alert.type]||'t-watch'}">${alert.type}</span><span class="a-time">${t}</span></div><div class="a-head">${alert.head}</div><div class="a-act">→ ${alert.act}</div></div>`;
+  div.onclick=()=>openAlertM(alert);
+  feed.insertBefore(div,feed.firstChild);
+  if(alert.sev==='critical')toast(`⚠️ CRITICAL: ${sym}`,'critical');
+  else toast(`${sym} scan complete`,'success');
+}
+
+function openAlertM(a){
+  const sb={critical:'background:var(--red-dim);border:1px solid rgba(239,68,68,.3);color:var(--red)',warning:'background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--amber)',info:'background:var(--blue-dim);border:1px solid rgba(59,130,246,.25);color:var(--blue)',ok:'background:var(--green-dim);border:1px solid rgba(34,197,94,.25);color:var(--green)'};
+  const sl={critical:'🔴 CRITICAL — Act Immediately',warning:'🟡 WARNING — Monitor Closely',info:'🔵 INFO — No Immediate Action',ok:'🟢 POSITIVE — Thesis Intact'};
+  const isSell=a.type==='SELL';
+  document.getElementById('mTitle').textContent=a.sym+' — '+a.type;
+  document.getElementById('mBody').innerHTML=`<div style="padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:14px;font-weight:500;${sb[a.sev]||sb.info}">${sl[a.sev]||sl.info}</div><div style="margin-bottom:14px"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">HEADLINE</div><div style="font-size:14px;color:var(--text);font-weight:500">${a.head}</div></div><div style="margin-bottom:14px"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">ANALYST COMMENTARY</div><div style="font-size:13px;color:var(--text2);line-height:1.6">${a.detail}</div></div><div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:14px"><div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">⚡ Recommended Action</div><div style="font-size:13px;color:var(--text2);line-height:1.7">${a.act}</div></div>`;
+  const btn=document.getElementById('mActBtn');
+  btn.textContent=a.aLbl||'Mark Reviewed';
+  btn.className='btn-act'+(isSell?' btn-act-r':'');
+  btn.onclick=()=>{closeM('alertModal');if(isSell)setTimeout(()=>openRep(a.sym),200);else toast(`${a.sym} reviewed`,'success');};
+  openM('alertModal');
+}
+
+// ════════════════════════════════════════════
+// REPLACE STOCK
+// ════════════════════════════════════════════
+function openRep(sym){
+  curRep=sym;
+  document.getElementById('repTitle').textContent=`Replace ${sym}`;
+  const opts=getReps()[sym]||[{t:'NIFTY50ETF',n:'Nifty 50 Index ETF',w:'Safe fallback'}];
+  const g=document.getElementById('repOpts');g.innerHTML='';
+  opts.forEach((o,i)=>{const d=document.createElement('div');d.className='rep-opt'+(i===0?' sel':'');d.innerHTML=`<div class="ro-t">${o.t}</div><div class="ro-n">${o.n}</div><div class="ro-w">${o.w}</div>`;d.onclick=()=>{g.querySelectorAll('.rep-opt').forEach(x=>x.classList.remove('sel'));d.classList.add('sel');};g.appendChild(d);});
+  openM('repModal');
+}
+
+function confirmReplace(){
+  const sel=document.querySelector('#repOpts .rep-opt.sel');if(!sel)return;
+  const nt=sel.querySelector('.ro-t').textContent,nn=sel.querySelector('.ro-n').textContent;
+  const s=getStocksArr().find(x=>x.sym===curRep);
+  if(s){const old=s.sym;s.sym=nt;s.name=nn;s.status='active';s.sig='BUY';renderAll();closeM('repModal');toast(`✓ ${old} → ${nt}`,'success');}
+}
+
+function toggleP(id){const s=getStocksArr().find(x=>x.id===id);if(s){s.status=s.status==='paused'?'active':'paused';renderAll();toast(`${s.sym} SIP ${s.status==='paused'?'paused':'resumed'}`,s.status==='paused'?'warning':'success');}}
+
+// ════════════════════════════════════════════
+// GOAL PLANNER
+// ════════════════════════════════════════════
+let plannerOpen=false;
+function togglePlanner(){plannerOpen=!plannerOpen;document.getElementById('plannerBody').style.display=plannerOpen?'block':'none';document.getElementById('plannerToggle').textContent=plannerOpen?'▲ COLLAPSE':'▼ EXPAND';if(plannerOpen)updatePlanner();}
+
+function project(sip,stepup,cagr,months){
+  const r=cagr/100/12,rg=0.10/12;let eq=3e6,gd=0,s=sip;const snaps=[];
+  for(let m=1;m<=months;m++){eq=eq*(1+r)+s;gd=gd*(1+rg)+100000;if(m%12===0&&m>=12)s=s*(1+stepup/100);if(m%12===0)snaps.push({yr:2026+m/12,eq,gd,tot:eq+gd,s});}
+  return{tot:eq+gd,eq,gd,snaps,lastSip:s};
+}
+
+function fmtP(v){return v>=1e7?'₹'+(v/1e7).toFixed(1)+' Cr':'₹'+(v/1e5).toFixed(1)+'L'}
+
+async function updatePlanner(){
+  const sip=+document.getElementById('slSip').value;
+  const step=+document.getElementById('slStep').value;
+  const cagr=+document.getElementById('slCagr').value;
+  document.getElementById('vSip').textContent='₹'+(sip/1e5).toFixed(2)+'L';
+  document.getElementById('vStep').textContent=step+'%';
+  document.getElementById('vCagr').textContent=cagr+'%';
+  const p60=project(sip,step,cagr,19*12);
+  const p65=project(sip,step,cagr,24*12);
+  const sip55=sip*Math.pow(1+step/100,14);
+  document.getElementById('r60').textContent=fmtP(p60.tot);
+  document.getElementById('r65').textContent=fmtP(p65.tot);
+  document.getElementById('rSip55').textContent=fmtP(sip55)+'/mo';
+  const gap=1e9-p60.tot;
+  const ge=document.getElementById('rGap');
+  ge.textContent=gap<=0?'✓ GOAL MET!':fmtP(gap)+' short';
+  ge.style.color=gap<=0?'var(--green)':gap<3e8?'var(--amber)':'var(--red)';
+  document.getElementById('rGapNote').textContent=gap<=0?'₹100Cr at 60 ✓':'At 65: '+fmtP(p65.tot);
+  let h='';
+  if(gap<=0)h=`<strong>✅ You hit ₹100Cr at 60!</strong> With <span class="hl">₹${(sip/1e5).toFixed(2)}L + ${step}% annual step-up</span>, the goal is achieved. <span class="good">Discipline now = financial freedom at 60.</span>`;
+  else if(p60.tot>=6e8)h=`With <span class="hl">₹${(sip/1e5).toFixed(2)}L + ${step}% step-up</span>, you reach <span class="hl">${fmtP(p60.tot)} at 60</span>. Extending to 65 gives <span class="hl">${fmtP(p65.tot)}</span>. <span class="good">This is a strong, realistic path.</span>`;
+  else h=`With <span class="hl">₹${(sip/1e5).toFixed(2)}L/month</span>, you reach <span class="warn">${fmtP(p60.tot)} at 60</span>. <strong>The annual step-up % is your most powerful lever.</strong> Try the Aggressive scenario above.`;
+  document.getElementById('honestText').innerHTML=h;
+  // Chart
+  const c=document.getElementById('projBars');c.innerHTML='';
+  const pick=[1,3,5,7,9,11,13,15,17,19];
+  const data=p60.snaps.filter(s=>pick.includes(s.yr-2026));
+  const mx=Math.max(...data.map(d=>d.tot));
+  data.forEach(d=>{
+    const eH=Math.max(4,Math.round(d.eq/mx*110));
+    const gH=Math.max(3,Math.round(d.gd/mx*110));
+    const mil=d.yr===2035||d.yr===2045;
+    const col=document.createElement('div');col.className='proj-col';
+    col.innerHTML=`<div class="proj-tot">${(d.tot/1e7).toFixed(0)}Cr</div><div class="proj-bar-pair"><div class="proj-bar pb-eq ${mil?'p-milestone':''}" style="height:${eH}px"></div><div class="proj-bar pb-gd" style="height:${gH}px"></div></div><div class="proj-yr">${d.yr}</div>`;
+    c.appendChild(col);
+  });
+  // Update stock amounts proportionally
+  const defs = getStockDefs();
+  const w = defs.map(s=>s.baseAmt), wt=w.reduce((a,b)=>a+b,0);
+  getStocksArr().forEach((s,i)=>s.amt=Math.round(w[i]/wt*sip/500)*500);
+  // ── Save planner settings so dashboard always shows the right total
+  try{await fbSet(getPlannerKey(),String(sip));}catch(e){}
+  renderSipTable();
+  renderStatStrip(); // keep dashboard in sync
+}
+
+function applyScenario(sip,step,cagr){
+  document.getElementById('slSip').value=sip;document.getElementById('slStep').value=step;document.getElementById('slCagr').value=cagr;
+  updatePlanner();toast(`Applied: ₹${(sip/1e5).toFixed(2)}L · ${step}% step-up`,'success');
+}
+
+// ════════════════════════════════════════════
+// TABS / MODALS / UTILS
+// ════════════════════════════════════════════
+function switchTab(name){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  const idx={dashboard:0,portfolio:1,transactions:2,alerts:3,corporate:4,planner:5}[name]||0;
+  document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  if(name==='portfolio'||name==='transactions')renderPortfolio();
+  if(name==='portfolio')setTimeout(renderBigChart,100);
+  if(name==='corporate')renderCorporateTab();
+}
+
+async function switchPortfolio(p){
+  activePortfolio = p;
+  // Reload prices for this portfolio from storage
+  await loadPrices();
+  // Restore planner SIP for this portfolio
+  const savedSip = await applyPlannerSip(p);
+  // Update switcher UI
+  document.getElementById('pswBtn-ram').style.cssText = p==='ram'
+    ? 'padding:10px 24px;font-family:\'JetBrains Mono\',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;border-bottom:3px solid var(--gold);color:var(--gold);cursor:pointer;margin-bottom:-2px;transition:all .2s'
+    : 'padding:10px 24px;font-family:\'JetBrains Mono\',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;border-bottom:3px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-2px;transition:all .2s';
+  document.getElementById('pswBtn-wife').style.cssText = p==='wife'
+    ? 'padding:10px 24px;font-family:\'JetBrains Mono\',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;border-bottom:3px solid #c084fc;color:#c084fc;cursor:pointer;margin-bottom:-2px;transition:all .2s'
+    : 'padding:10px 24px;font-family:\'JetBrains Mono\',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;border-bottom:3px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-2px;transition:all .2s';
+  const lbl = document.getElementById('activePortfolioLabel');
+  if(lbl) lbl.textContent = p==='wife'
+    ? `WIFE'S PORTFOLIO · ₹${(savedSip/1e5).toFixed(2)}L/mo · Conservative-Quality`
+    : `RAM'S PORTFOLIO · ₹${(savedSip/1e5).toFixed(2)}L/mo · Growth-Aggressive`;
+  // Update logo subtitle
+  document.querySelector('.logo-sub').textContent = p==='wife'
+    ? 'SteadyWealth Portfolio · Conservative · 2026–2045'
+    : 'Portfolio Tracker · Retire at 60 · 2026–2045';
+  updateFamilyCorpus();
+  if(bigChartInstance){bigChartInstance.destroy();bigChartInstance=null;}
+  stockCharts={};
+  renderAll();
+  renderPriceTicker();
+  document.getElementById('alertFeed').innerHTML = '<div class="a-empty">Click "Scan All 10 Stocks" to get AI-powered alerts for every holding.</div>';
+  toast(`Switched to ${p==='wife'?"Wife's SteadyWealth Portfolio":"Ram's Growth Portfolio"}`,'success');
+}
+
+function updateFamilyCorpus(){
+  // Show combined invested across both portfolios
+  const ramInvested = txnLog.reduce((a,t)=>a+t.amount,0);
+  const wifeInvested = txnLogWife.reduce((a,t)=>a+t.amount,0);
+  const total = ramInvested + wifeInvested;
+  const el = document.getElementById('familyCorpus');
+  if(el && total>0){
+    el.textContent = `🏠 Family total invested: ₹${(total/100000).toFixed(2)}L`;
+  }
+}
+
+function openM(id){document.getElementById(id).classList.add('active')}
+function closeM(id){document.getElementById(id).classList.remove('active')}
+document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('active')}));
+function openEmailSetup(){openM('emailModal')}
+
+function toast(msg,type='success'){
+  const c=document.getElementById('toastC'),t=document.createElement('div');
+  t.className=`toast ${type}`;t.innerHTML=`<span>${type==='critical'?'🚨':type==='warning'?'⚠️':'✓'}</span><span>${msg}</span>`;
+  c.appendChild(t);setTimeout(()=>{t.style.cssText='opacity:0;transform:translateX(20px);transition:all .3s';setTimeout(()=>t.remove(),300)},5000);
+}
+
+// ════════════════════════════════════════════
+// INIT — async, Firebase + PWA
+// ════════════════════════════════════════════
+async function applyPlannerSip(portfolio) {
+  const key = portfolio==='wife' ? 'wifePlannerSip' : 'ramPlannerSip';
+  const def = portfolio==='wife' ? 100000 : 200000;
+  let savedSip = def;
+  try {
+    const r = await fbGet(key);
+    if (r) savedSip = parseInt(r) || def;
+  } catch(e) {}
+  const arr  = portfolio==='wife' ? stocksWife : stocks;
+  const defs = portfolio==='wife' ? STOCKS_WIFE : STOCKS;
+  const w = defs.map(s=>s.baseAmt), wt=w.reduce((a,b)=>a+b,0);
+  arr.forEach((s,i)=>s.amt=Math.round(w[i]/wt*savedSip/500)*500);
+  if (portfolio===activePortfolio) {
+    const sl=document.getElementById('slSip');
+    if(sl) sl.value=savedSip;
+  }
+  return savedSip;
+}
+
+async function init() {
+  // Register service worker for PWA offline support
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+
+  // Check Firebase config
+  const hasCfg = !!localStorage.getItem('sipFirebaseCfg');
+  if (!hasCfg) {
+    showSetupScreen();
+    return;
+  }
+
+  document.getElementById('priceStatus').textContent='SYNCING...';
+  const fbOk = await initFirebase();
+  if (!fbOk) { showSetupScreen(); return; }
+
+  // Load all data in parallel from Firestore
+  await Promise.all([loadTxns(), loadCALog(), loadEmail()]);
+  await loadPrices();
+  const ramSip  = await applyPlannerSip('ram');
+  await applyPlannerSip('wife');
+  updateFamilyCorpus();
+  renderAll();
+  renderPriceTicker();
+  document.getElementById('priceLastUpdated').textContent="Click 'Update Prices' to enter today's closing prices";
+  document.getElementById('priceStatus').textContent='SYNCED ✓';
+  setTimeout(()=>{ document.getElementById('priceStatus').textContent='PRICES: REF DATA'; }, 2000);
+  const lbl=document.getElementById('activePortfolioLabel');
+  if(lbl) lbl.textContent=`RAM'S PORTFOLIO · ₹${(ramSip/1e5).toFixed(2)}L/mo · Growth-Aggressive`;
+  // SIP due alerts
+  setTimeout(()=>{
+    getStocksArr().forEach(s=>{
+      if(s.status!=='active')return;
+      const nd=nextDate(s.day);const days=daysUntil(nd);
+      if(days<=0){
+        const logged=getTxnLog().some(t=>t.sym===s.sym&&dateKey(t.date)===todayKey());
+        if(!logged){playBeep('sip');setTimeout(()=>toast(`⏰ SIP DUE: ${s.sym} — ₹${s.amt.toLocaleString('en-IN')} — click Log ✏️ after completing`,'warning'),500+s.id*300);}
+        else{toast(`✓ ${s.sym} SIP already logged today`,'success');}
+      } else if(days<=2){
+        setTimeout(()=>toast(`📅 ${s.sym} SIP due in ${days} day(s) — ₹${s.amt.toLocaleString('en-IN')}`,'warning'),1500+s.id*250);
+      }
+    });
+  },800);
+}
+
+function showSetupScreen() {
+  document.body.innerHTML = `
+  <div style="min-height:100vh;background:#060810;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Lora',Georgia,serif">
+    <div style="max-width:560px;width:100%">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:32px">
+        <div style="width:44px;height:44px;background:#f0a830;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:18px;color:#060810;font-family:Syne,sans-serif">R</div>
+        <div>
+          <div style="font-family:Syne,sans-serif;font-weight:700;font-size:20px;color:#e2e8f0">RAM — SIP COMMAND CENTRE</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#4a5568;letter-spacing:.12em;text-transform:uppercase">First-time Firebase Setup</div>
+        </div>
+      </div>
+      <div style="background:#0d1117;border:1px solid #1e2730;border-radius:8px;padding:28px;margin-bottom:20px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#f0a830;letter-spacing:.1em;margin-bottom:16px">STEP 1 — CREATE YOUR FIREBASE PROJECT</div>
+        <ol style="color:#94a3b8;font-size:14px;line-height:2;padding-left:20px">
+          <li>Go to <a href="https://console.firebase.google.com" target="_blank" style="color:#3b82f6">console.firebase.google.com</a></li>
+          <li>Click <strong style="color:#e2e8f0">Add project</strong> → name it <em>sip-tracker</em></li>
+          <li>Disable Google Analytics → Create project</li>
+          <li>Click <strong style="color:#e2e8f0">Web</strong> (&lt;/&gt;) → Register app → name it <em>sip-app</em></li>
+          <li>Copy the <code style="background:#141920;padding:2px 6px;border-radius:4px;color:#f0a830">firebaseConfig</code> object shown</li>
+          <li>Go to <strong style="color:#e2e8f0">Firestore Database</strong> → Create database → Start in <strong style="color:#e2e8f0">test mode</strong></li>
+        </ol>
+      </div>
+      <div style="background:#0d1117;border:1px solid #1e2730;border-radius:8px;padding:28px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#f0a830;letter-spacing:.1em;margin-bottom:16px">STEP 2 — PASTE YOUR FIREBASE CONFIG</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#4a5568;margin-bottom:8px">Paste the entire firebaseConfig object (including the curly braces):</div>
+        <textarea id="cfgInput" placeholder='{
+  apiKey: "AIza...",
+  authDomain: "your-app.firebaseapp.com",
+  projectId: "your-app",
+  storageBucket: "your-app.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123:web:abc123"
+}' style="width:100%;height:160px;background:#060810;border:1px solid #253040;border-radius:6px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:12px;padding:12px;resize:vertical;outline:none;line-height:1.6"></textarea>
+        <div id="cfgError" style="color:#ef4444;font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:8px;display:none"></div>
+        <button onclick="saveFirebaseConfig()" style="width:100%;margin-top:16px;padding:14px;background:#f0a830;color:#060810;border:none;border-radius:8px;font-family:Syne,sans-serif;font-weight:700;font-size:15px;cursor:pointer;letter-spacing:.05em">
+          ✓ CONNECT & LAUNCH APP
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function saveFirebaseConfig() {
+  const raw = document.getElementById('cfgInput').value.trim();
+  const errEl = document.getElementById('cfgError');
+  try {
+    // Parse the config object — handle both JS object and JSON formats
+    let cleaned = raw
+      .replace(/^const\s+firebaseConfig\s*=\s*/, '')
+      .replace(/;$/, '')
+      .trim();
+    // Convert JS object keys to JSON keys
+    cleaned = cleaned.replace(/(\w+):/g, '"$1":');
+    // Fix double-quoted keys that got re-quoted
+    cleaned = cleaned.replace(/"+"(\w+)"+":/g, '"$1":');
+    const cfg = JSON.parse(cleaned);
+    if (!cfg.apiKey || !cfg.projectId) throw new Error('Missing required fields');
+    localStorage.setItem('sipFirebaseCfg', JSON.stringify(cfg));
+    errEl.style.display = 'none';
+    // Reload to start app
+    window.location.reload();
+  } catch(e) {
+    errEl.textContent = '⚠ Invalid config — make sure you pasted the full firebaseConfig object';
+    errEl.style.display = 'block';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
