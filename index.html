@@ -12,12 +12,9 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>RAM — SIP Command Centre</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  window._fbModules = { initializeApp, getFirestore, doc, getDoc, setDoc, collection, getDocs };
-</script>
+<!-- Firebase SDK via compat (global, no modules needed) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 :root{
   --bg:#060810;--surface:#0d1117;--surface2:#141920;--surface3:#1a2230;
@@ -933,13 +930,14 @@ let priceRefreshTimer = null;
 let db = null;
 
 async function initFirebase() {
-  // Load config from localStorage (set once on first run)
   const cfg = JSON.parse(localStorage.getItem('sipFirebaseCfg') || 'null');
   if (!cfg) return false;
   try {
-    const { initializeApp, getFirestore } = window._fbModules;
-    const app = initializeApp(cfg);
-    db = getFirestore(app);
+    // Use compat SDK — available as global firebase.*
+    if (!firebase.apps.length) {
+      firebase.initializeApp(cfg);
+    }
+    db = firebase.firestore();
     return true;
   } catch(e) {
     console.error('Firebase init failed:', e);
@@ -950,17 +948,15 @@ async function initFirebase() {
 async function fbGet(key) {
   if (!db) return null;
   try {
-    const { doc, getDoc } = window._fbModules;
-    const snap = await getDoc(doc(db, 'sipdata', key));
-    return snap.exists() ? snap.data().value : null;
+    const snap = await db.collection('sipdata').doc(key).get();
+    return snap.exists ? snap.data().value : null;
   } catch(e) { return null; }
 }
 
 async function fbSet(key, value) {
   if (!db) return;
   try {
-    const { doc, setDoc } = window._fbModules;
-    await setDoc(doc(db, 'sipdata', key), { value, updatedAt: Date.now() });
+    await db.collection('sipdata').doc(key).set({ value, updatedAt: Date.now() });
   } catch(e) { console.error('fbSet error:', e); }
 }
 
@@ -2513,10 +2509,13 @@ async function init() {
     return;
   }
 
-  document.getElementById('priceStatus').textContent='SYNCING...';
   const fbOk = await initFirebase();
   if (!fbOk) { showSetupScreen(); return; }
 
+  // Safe DOM helper
+  const setEl = (id, txt) => { const el=document.getElementById(id); if(el) el.textContent=txt; };
+
+  setEl('priceStatus', 'SYNCING...');
   // Load all data in parallel from Firestore
   await Promise.all([loadTxns(), loadCALog(), loadEmail()]);
   await loadPrices();
@@ -2525,9 +2524,9 @@ async function init() {
   updateFamilyCorpus();
   renderAll();
   renderPriceTicker();
-  document.getElementById('priceLastUpdated').textContent="Click 'Update Prices' to enter today's closing prices";
-  document.getElementById('priceStatus').textContent='SYNCED ✓';
-  setTimeout(()=>{ document.getElementById('priceStatus').textContent='PRICES: REF DATA'; }, 2000);
+  setEl('priceLastUpdated', "Click 'Update Prices' to enter today's closing prices");
+  setEl('priceStatus', 'SYNCED ✓');
+  setTimeout(()=>{ setEl('priceStatus','PRICES: REF DATA'); }, 2000);
   const lbl=document.getElementById('activePortfolioLabel');
   if(lbl) lbl.textContent=`RAM'S PORTFOLIO · ₹${(ramSip/1e5).toFixed(2)}L/mo · Growth-Aggressive`;
   // SIP due alerts
@@ -2592,20 +2591,20 @@ function saveFirebaseConfig() {
   const raw = document.getElementById('cfgInput').value.trim();
   const errEl = document.getElementById('cfgError');
   try {
-    // Parse the config object — handle both JS object and JSON formats
+    // Strip optional variable assignment wrapper
     let cleaned = raw
       .replace(/^const\s+firebaseConfig\s*=\s*/, '')
+      .replace(/^var\s+firebaseConfig\s*=\s*/, '')
       .replace(/;$/, '')
       .trim();
-    // Convert JS object keys to JSON keys
-    cleaned = cleaned.replace(/(\w+):/g, '"$1":');
-    // Fix double-quoted keys that got re-quoted
-    cleaned = cleaned.replace(/"+"(\w+)"+":/g, '"$1":');
+    // Only quote UNQUOTED keys (at start of line or after {/,)
+    // This handles JS object format: apiKey: "..." → "apiKey": "..."
+    // But won't corrupt already-quoted keys or values like "1:1029..."
+    cleaned = cleaned.replace(/(^|[{,\n\r]\s*)([a-zA-Z_]\w*)\s*:/g, '$1"$2":');
     const cfg = JSON.parse(cleaned);
     if (!cfg.apiKey || !cfg.projectId) throw new Error('Missing required fields');
     localStorage.setItem('sipFirebaseCfg', JSON.stringify(cfg));
     errEl.style.display = 'none';
-    // Reload to start app
     window.location.reload();
   } catch(e) {
     errEl.textContent = '⚠ Invalid config — make sure you pasted the full firebaseConfig object';
