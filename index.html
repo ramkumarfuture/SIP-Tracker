@@ -946,12 +946,13 @@ async function initFirebase() {
 }
 
 async function fbGet(key) {
-  if (!db) return null;
+  if (!db) { console.warn('fbGet: db is null, key:', key); return null; }
   try {
     const snap = await db.collection('sipdata').doc(key).get();
+    console.log('fbGet', key, '— exists:', snap.exists);
     if (!snap.exists) return null;
     const val = snap.data().value;
-    // Always return as string so JSON.parse works consistently
+    console.log('fbGet', key, '— value type:', typeof val, '— preview:', String(val).substring(0,60));
     return typeof val === 'string' ? val : JSON.stringify(val);
   } catch(e) { console.warn('fbGet error', key, e); return null; }
 }
@@ -1253,10 +1254,25 @@ function getTxnLog(){ return activePortfolio==='wife' ? txnLogWife : txnLog; }
 function setTxnLog(arr){ if(activePortfolio==='wife') txnLogWife=arr; else txnLog=arr; }
 let snoozed = {};
 
-async function saveTxns(){try{await fbSet(getTxnKey(),JSON.stringify(getTxnLog()));}catch(e){}}
+async function saveTxns(){
+  try{
+    const data = JSON.stringify(getTxnLog());
+    console.log('saveTxns key:', getTxnKey(), 'entries:', getTxnLog().length);
+    await fbSet(getTxnKey(), data);
+    console.log('saveTxns SUCCESS');
+  }catch(e){ console.error('saveTxns FAILED:', e); }
+}
 async function loadTxns(){
-  try{const r=await fbGet('ramSipTxns');if(r)txnLog=JSON.parse(r);}catch(e){}
-  try{const r=await fbGet('wifeSipTxns');if(r)txnLogWife=JSON.parse(r);}catch(e){}
+  try{
+    const r=await fbGet('ramSipTxns');
+    console.log('loadTxns RAM raw:', r, typeof r);
+    if(r){ txnLog=JSON.parse(r); console.log('txnLog loaded:', txnLog.length, 'entries'); }
+  }catch(e){ console.error('loadTxns RAM error:', e); }
+  try{
+    const r=await fbGet('wifeSipTxns');
+    console.log('loadTxns WIFE raw:', r, typeof r);
+    if(r){ txnLogWife=JSON.parse(r); }
+  }catch(e){ console.error('loadTxns WIFE error:', e); }
 }
 async function saveEmail(){const v=document.getElementById('emailInput').value.trim();if(v&&v.includes('@')){emailAddress=v;try{await fbSet('ramEmail',v);}catch(e){}closeM('emailModal');toast(`📧 Reminders set for ${v}`,'success');}else{toast('Please enter a valid email','warning');}}
 async function loadEmail(){try{const r=await fbGet('ramEmail');if(r){emailAddress=r;document.getElementById('emailInput').value=r;}}catch(e){}}
