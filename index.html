@@ -949,16 +949,23 @@ async function fbGet(key) {
   if (!db) return null;
   try {
     const snap = await db.collection('sipdata').doc(key).get();
-    return snap.exists ? snap.data().value : null;
-  } catch(e) { return null; }
+    if (!snap.exists) return null;
+    const val = snap.data().value;
+    // Always return as string so JSON.parse works consistently
+    return typeof val === 'string' ? val : JSON.stringify(val);
+  } catch(e) { console.warn('fbGet error', key, e); return null; }
 }
 
 async function fbSet(key, value) {
   if (!db) return;
   try {
-    await db.collection('sipdata').doc(key).set({ value, updatedAt: Date.now() });
-  } catch(e) { console.error('fbSet error:', e); }
+    // Always store as string
+    const v = typeof value === 'string' ? value : JSON.stringify(value);
+    await db.collection('sipdata').doc(key).set({ value: v, updatedAt: Date.now() });
+  } catch(e) { console.error('fbSet error', key, e); }
 }
+
+
 
 // ── PRICES
 async function loadPrices() {
@@ -2529,6 +2536,11 @@ async function init() {
   setTimeout(()=>{ setEl('priceStatus','PRICES: REF DATA'); }, 2000);
   const lbl=document.getElementById('activePortfolioLabel');
   if(lbl) lbl.textContent=`RAM'S PORTFOLIO · ₹${(ramSip/1e5).toFixed(2)}L/mo · Growth-Aggressive`;
+  // Real-time listener — sync changes from other devices instantly
+  db.collection('sipdata').onSnapshot(()=>{
+    loadTxns().then(()=>{ renderAll(); updateFamilyCorpus(); });
+  }, ()=>{});  // silent error if offline
+
   // SIP due alerts
   setTimeout(()=>{
     getStocksArr().forEach(s=>{
