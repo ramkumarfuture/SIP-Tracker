@@ -933,11 +933,16 @@ async function initFirebase() {
   const cfg = JSON.parse(localStorage.getItem('sipFirebaseCfg') || 'null');
   if (!cfg) return false;
   try {
-    // Use compat SDK — available as global firebase.*
     if (!firebase.apps.length) {
       firebase.initializeApp(cfg);
     }
     db = firebase.firestore();
+    // Enable offline persistence so data survives refresh even when briefly offline
+    try {
+      await db.enablePersistence({ synchronizeTabs: true });
+    } catch(e) {
+      // Persistence may already be enabled or not supported — non-fatal
+    }
     return true;
   } catch(e) {
     console.error('Firebase init failed:', e);
@@ -948,13 +953,27 @@ async function initFirebase() {
 async function fbGet(key) {
   if (!db) { console.warn('fbGet: db is null, key:', key); return null; }
   try {
-    const snap = await db.collection('sipdata').doc(key).get();
-    console.log('fbGet', key, '— exists:', snap.exists);
+    // { source: 'cache' } first — works offline instantly from persistence
+    try {
+      const snap = await db.collection('sipdata').doc(key).get({ source: 'cache' });
+      if (snap.exists) {
+        const val = snap.data().value;
+        console.log('fbGet', key, '— from CACHE, value:', String(val).substring(0,60));
+        return typeof val === 'string' ? val : JSON.stringify(val);
+      }
+    } catch(cacheErr) {
+      // Not in cache yet — fall through to server fetch
+    }
+    // Try server
+    const snap = await db.collection('sipdata').doc(key).get({ source: 'server' });
+    console.log('fbGet', key, '— from SERVER, exists:', snap.exists);
     if (!snap.exists) return null;
     const val = snap.data().value;
-    console.log('fbGet', key, '— value type:', typeof val, '— preview:', String(val).substring(0,60));
     return typeof val === 'string' ? val : JSON.stringify(val);
-  } catch(e) { console.warn('fbGet error', key, e); return null; }
+  } catch(e) {
+    console.warn('fbGet error', key, e);
+    return null;
+  }
 }
 
 async function fbSet(key, value) {
