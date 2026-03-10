@@ -12,9 +12,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>RAM — SIP Command Centre</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
-<!-- Firebase SDK via compat (global, no modules needed) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- No SDK needed - using JSONBin REST API -->
 <style>
 :root{
   --bg:#060810;--surface:#0d1117;--surface2:#141920;--surface3:#1a2230;
@@ -925,64 +923,61 @@ let pricesFetched = false;
 let priceRefreshTimer = null;
 
 // ════════════════════════════════════════════
-// FIREBASE STORAGE LAYER
+// JSONBIN STORAGE LAYER — Simple REST, no SDK
 // ════════════════════════════════════════════
-let db = null;
+let JSONBIN_KEY = null;   // Master key (bin ID)
+let JSONBIN_API = null;   // API key
 
-async function initFirebase() {
-  const cfg = JSON.parse(localStorage.getItem('sipFirebaseCfg') || 'null');
+function initStorage() {
+  const cfg = JSON.parse(localStorage.getItem('sipJsonBinCfg') || 'null');
   if (!cfg) return false;
+  JSONBIN_KEY = cfg.binId;
+  JSONBIN_API = cfg.apiKey;
+  return true;
+}
+
+// In-memory cache — loaded once on init, written through on save
+let _store = {};
+
+async function loadAllFromBin() {
   try {
-    if (!firebase.apps.length) {
-      firebase.initializeApp(cfg);
-    }
-    db = firebase.firestore();
-    // Enable offline persistence so data survives refresh even when briefly offline
-    try {
-      await db.enablePersistence({ synchronizeTabs: true });
-    } catch(e) {
-      // Persistence may already be enabled or not supported — non-fatal
-    }
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_KEY}/latest`, {
+      headers: { 'X-Master-Key': JSONBIN_API }
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    _store = j.record || {};
+    console.log('JSONBin loaded, keys:', Object.keys(_store));
     return true;
   } catch(e) {
-    console.error('Firebase init failed:', e);
+    console.warn('JSONBin load error:', e);
+    // Fall back to localStorage cache
+    const cached = localStorage.getItem('sipStoreCache');
+    if (cached) { _store = JSON.parse(cached); console.log('Using localStorage cache'); }
     return false;
   }
 }
 
-async function fbGet(key) {
-  if (!db) { console.warn('fbGet: db is null, key:', key); return null; }
+async function saveAllToBin() {
+  // Also cache locally so refresh works even if network is slow
+  localStorage.setItem('sipStoreCache', JSON.stringify(_store));
   try {
-    // { source: 'cache' } first — works offline instantly from persistence
-    try {
-      const snap = await db.collection('sipdata').doc(key).get({ source: 'cache' });
-      if (snap.exists) {
-        const val = snap.data().value;
-        console.log('fbGet', key, '— from CACHE, value:', String(val).substring(0,60));
-        return typeof val === 'string' ? val : JSON.stringify(val);
-      }
-    } catch(cacheErr) {
-      // Not in cache yet — fall through to server fetch
-    }
-    // Try server
-    const snap = await db.collection('sipdata').doc(key).get({ source: 'server' });
-    console.log('fbGet', key, '— from SERVER, exists:', snap.exists);
-    if (!snap.exists) return null;
-    const val = snap.data().value;
-    return typeof val === 'string' ? val : JSON.stringify(val);
-  } catch(e) {
-    console.warn('fbGet error', key, e);
-    return null;
-  }
+    await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_KEY}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API },
+      body: JSON.stringify(_store)
+    });
+  } catch(e) { console.warn('JSONBin save error:', e); }
+}
+
+function fbGet(key) {
+  // Synchronous read from in-memory store
+  return _store[key] || null;
 }
 
 async function fbSet(key, value) {
-  if (!db) return;
-  try {
-    // Always store as string
-    const v = typeof value === 'string' ? value : JSON.stringify(value);
-    await db.collection('sipdata').doc(key).set({ value: v, updatedAt: Date.now() });
-  } catch(e) { console.error('fbSet error', key, e); }
+  _store[key] = value;
+  await saveAllToBin();
 }
 
 
@@ -990,7 +985,7 @@ async function fbSet(key, value) {
 // ── PRICES
 async function loadPrices() {
   try {
-    const res = await fbGet(getPriceKey());
+    const res = fbGet(getPriceKey());
     if (res) {
       livePrices = JSON.parse(res);
     } else {
@@ -1283,18 +1278,18 @@ async function saveTxns(){
 }
 async function loadTxns(){
   try{
-    const r=await fbGet('ramSipTxns');
+    const r = fbGet('ramSipTxns');
     console.log('loadTxns RAM raw:', r, typeof r);
     if(r){ txnLog=JSON.parse(r); console.log('txnLog loaded:', txnLog.length, 'entries'); }
   }catch(e){ console.error('loadTxns RAM error:', e); }
   try{
-    const r=await fbGet('wifeSipTxns');
+    const r = fbGet('wifeSipTxns');
     console.log('loadTxns WIFE raw:', r, typeof r);
     if(r){ txnLogWife=JSON.parse(r); }
   }catch(e){ console.error('loadTxns WIFE error:', e); }
 }
 async function saveEmail(){const v=document.getElementById('emailInput').value.trim();if(v&&v.includes('@')){emailAddress=v;try{await fbSet('ramEmail',v);}catch(e){}closeM('emailModal');toast(`📧 Reminders set for ${v}`,'success');}else{toast('Please enter a valid email','warning');}}
-async function loadEmail(){try{const r=await fbGet('ramEmail');if(r){emailAddress=r;document.getElementById('emailInput').value=r;}}catch(e){}}
+async function loadEmail(){try{const r = fbGet('ramEmail');if(r){emailAddress=r;document.getElementById('emailInput').value=r;}}catch(e){}}
 
 // ════════════════════════════════════════════
 // CLOCK & DATE UTILS
@@ -1469,8 +1464,8 @@ let caType = 'dividend';
 
 async function saveCALog(){try{await fbSet(getCAKey(),JSON.stringify(getCALog()));}catch(e){}}
 async function loadCALog(){
-  try{const r=await fbGet('ramCALog');if(r)cActionLog=JSON.parse(r);}catch(e){}
-  try{const r=await fbGet('wifeCALog');if(r)cActionLogWife=JSON.parse(r);}catch(e){}
+  try{const r = fbGet('ramCALog');if(r)cActionLog=JSON.parse(r);}catch(e){}
+  try{const r = fbGet('wifeCALog');if(r)cActionLogWife=JSON.parse(r);}catch(e){}
 }
 
 // How splits/bonus affect unit count up to a given date
@@ -2524,7 +2519,7 @@ async function applyPlannerSip(portfolio) {
   const def = portfolio==='wife' ? 100000 : 200000;
   let savedSip = def;
   try {
-    const r = await fbGet(key);
+    const r = fbGet(key);
     if (r) savedSip = parseInt(r) || def;
   } catch(e) {}
   const arr  = portfolio==='wife' ? stocksWife : stocks;
@@ -2544,21 +2539,20 @@ async function init() {
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
 
-  // Check Firebase config
-  const hasCfg = !!localStorage.getItem('sipFirebaseCfg');
+  // Check JSONBin config
+  const hasCfg = initStorage();
   if (!hasCfg) {
     showSetupScreen();
     return;
   }
 
-  const fbOk = await initFirebase();
-  if (!fbOk) { showSetupScreen(); return; }
-
   // Safe DOM helper
   const setEl = (id, txt) => { const el=document.getElementById(id); if(el) el.textContent=txt; };
 
   setEl('priceStatus', 'SYNCING...');
-  // Load all data in parallel from Firestore
+  // Load ALL data in one fetch from JSONBin
+  await loadAllFromBin();
+  // Now read from in-memory store
   await Promise.all([loadTxns(), loadCALog(), loadEmail()]);
   await loadPrices();
   const ramSip  = await applyPlannerSip('ram');
@@ -2571,11 +2565,6 @@ async function init() {
   setTimeout(()=>{ setEl('priceStatus','PRICES: REF DATA'); }, 2000);
   const lbl=document.getElementById('activePortfolioLabel');
   if(lbl) lbl.textContent=`RAM'S PORTFOLIO · ₹${(ramSip/1e5).toFixed(2)}L/mo · Growth-Aggressive`;
-  // Real-time listener — sync changes from other devices instantly
-  db.collection('sipdata').onSnapshot(()=>{
-    loadTxns().then(()=>{ renderAll(); updateFamilyCorpus(); });
-  }, ()=>{});  // silent error if offline
-
   // SIP due alerts
   setTimeout(()=>{
     getStocksArr().forEach(s=>{
@@ -2595,38 +2584,35 @@ async function init() {
 function showSetupScreen() {
   document.body.innerHTML = `
   <div style="min-height:100vh;background:#060810;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Lora',Georgia,serif">
-    <div style="max-width:560px;width:100%">
+    <div style="max-width:580px;width:100%">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:32px">
         <div style="width:44px;height:44px;background:#f0a830;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:18px;color:#060810;font-family:Syne,sans-serif">R</div>
         <div>
           <div style="font-family:Syne,sans-serif;font-weight:700;font-size:20px;color:#e2e8f0">RAM — SIP COMMAND CENTRE</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#4a5568;letter-spacing:.12em;text-transform:uppercase">First-time Firebase Setup</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#4a5568;letter-spacing:.12em;text-transform:uppercase">One-time Setup — 2 minutes</div>
         </div>
       </div>
       <div style="background:#0d1117;border:1px solid #1e2730;border-radius:8px;padding:28px;margin-bottom:20px">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#f0a830;letter-spacing:.1em;margin-bottom:16px">STEP 1 — CREATE YOUR FIREBASE PROJECT</div>
-        <ol style="color:#94a3b8;font-size:14px;line-height:2;padding-left:20px">
-          <li>Go to <a href="https://console.firebase.google.com" target="_blank" style="color:#3b82f6">console.firebase.google.com</a></li>
-          <li>Click <strong style="color:#e2e8f0">Add project</strong> → name it <em>sip-tracker</em></li>
-          <li>Disable Google Analytics → Create project</li>
-          <li>Click <strong style="color:#e2e8f0">Web</strong> (&lt;/&gt;) → Register app → name it <em>sip-app</em></li>
-          <li>Copy the <code style="background:#141920;padding:2px 6px;border-radius:4px;color:#f0a830">firebaseConfig</code> object shown</li>
-          <li>Go to <strong style="color:#e2e8f0">Firestore Database</strong> → Create database → Start in <strong style="color:#e2e8f0">test mode</strong></li>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#f0a830;letter-spacing:.1em;margin-bottom:16px">STEP 1 — CREATE FREE STORAGE</div>
+        <ol style="color:#94a3b8;font-size:14px;line-height:2.2;padding-left:20px;margin:0">
+          <li>Go to <a href="https://jsonbin.io" target="_blank" style="color:#3b82f6">jsonbin.io</a> and sign up free (use Google login)</li>
+          <li>Click <strong style="color:#e2e8f0">CREATE BIN</strong> — paste <code style="background:#141920;padding:2px 6px;border-radius:4px;color:#f0a830">{}</code> → click Create</li>
+          <li>Copy the <strong style="color:#e2e8f0">BIN ID</strong> from the URL (the part after /b/)</li>
+          <li>Click <strong style="color:#e2e8f0">API Keys</strong> in the top menu → copy your <strong style="color:#e2e8f0">Master Key</strong></li>
         </ol>
       </div>
       <div style="background:#0d1117;border:1px solid #1e2730;border-radius:8px;padding:28px">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#f0a830;letter-spacing:.1em;margin-bottom:16px">STEP 2 — PASTE YOUR FIREBASE CONFIG</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#4a5568;margin-bottom:8px">Paste the entire firebaseConfig object (including the curly braces):</div>
-        <textarea id="cfgInput" placeholder='{
-  apiKey: "AIza...",
-  authDomain: "your-app.firebaseapp.com",
-  projectId: "your-app",
-  storageBucket: "your-app.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123:web:abc123"
-}' style="width:100%;height:160px;background:#060810;border:1px solid #253040;border-radius:6px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:12px;padding:12px;resize:vertical;outline:none;line-height:1.6"></textarea>
-        <div id="cfgError" style="color:#ef4444;font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:8px;display:none"></div>
-        <button onclick="saveFirebaseConfig()" style="width:100%;margin-top:16px;padding:14px;background:#f0a830;color:#060810;border:none;border-radius:8px;font-family:Syne,sans-serif;font-weight:700;font-size:15px;cursor:pointer;letter-spacing:.05em">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#f0a830;letter-spacing:.1em;margin-bottom:20px">STEP 2 — ENTER YOUR CREDENTIALS</div>
+        <div style="margin-bottom:16px">
+          <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#64748b;display:block;margin-bottom:6px;letter-spacing:.08em">BIN ID (from URL: jsonbin.io/b/YOUR-BIN-ID)</label>
+          <input id="binIdInput" type="text" placeholder="67cba12e8a456b7890123456" style="width:100%;padding:10px 12px;background:#060810;border:1px solid #253040;border-radius:6px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:20px">
+          <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#64748b;display:block;margin-bottom:6px;letter-spacing:.08em">MASTER KEY (starts with $2b$...)</label>
+          <input id="apiKeyInput" type="password" placeholder="$2b$10$..." style="width:100%;padding:10px 12px;background:#060810;border:1px solid #253040;border-radius:6px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div id="cfgError" style="color:#ef4444;font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:12px;display:none"></div>
+        <button id="connectBtn" onclick="saveJsonBinConfig()" style="width:100%;padding:14px;background:#f0a830;color:#060810;border:none;border-radius:8px;font-family:Syne,sans-serif;font-weight:700;font-size:15px;cursor:pointer;letter-spacing:.05em">
           ✓ CONNECT & LAUNCH APP
         </button>
       </div>
@@ -2634,28 +2620,30 @@ function showSetupScreen() {
   </div>`;
 }
 
-function saveFirebaseConfig() {
-  const raw = document.getElementById('cfgInput').value.trim();
+async function saveJsonBinConfig() {
+  const binId = document.getElementById('binIdInput').value.trim();
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
   const errEl = document.getElementById('cfgError');
+  const btn = document.getElementById('connectBtn');
+  if (!binId || !apiKey) {
+    errEl.textContent = 'Please enter both Bin ID and Master Key';
+    errEl.style.display = 'block'; return;
+  }
+  btn.textContent = 'Testing connection...';
+  btn.disabled = true;
   try {
-    // Strip optional variable assignment wrapper
-    let cleaned = raw
-      .replace(/^const\s+firebaseConfig\s*=\s*/, '')
-      .replace(/^var\s+firebaseConfig\s*=\s*/, '')
-      .replace(/;$/, '')
-      .trim();
-    // Only quote UNQUOTED keys (at start of line or after {/,)
-    // This handles JS object format: apiKey: "..." → "apiKey": "..."
-    // But won't corrupt already-quoted keys or values like "1:1029..."
-    cleaned = cleaned.replace(/(^|[{,\n\r]\s*)([a-zA-Z_]\w*)\s*:/g, '$1"$2":');
-    const cfg = JSON.parse(cleaned);
-    if (!cfg.apiKey || !cfg.projectId) throw new Error('Missing required fields');
-    localStorage.setItem('sipFirebaseCfg', JSON.stringify(cfg));
+    const r = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
+      headers: { 'X-Master-Key': apiKey }
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    localStorage.setItem('sipJsonBinCfg', JSON.stringify({ binId, apiKey }));
     errEl.style.display = 'none';
     window.location.reload();
   } catch(e) {
-    errEl.textContent = '⚠ Invalid config — make sure you pasted the full firebaseConfig object';
+    errEl.textContent = 'Connection failed — check your Bin ID and Master Key';
     errEl.style.display = 'block';
+    btn.textContent = '✓ CONNECT & LAUNCH APP';
+    btn.disabled = false;
   }
 }
 
