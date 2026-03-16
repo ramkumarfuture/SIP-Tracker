@@ -346,7 +346,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     👨‍⚕️ RAM
   </button>
   <button id="pswBtn-wife" onclick="switchPortfolio('wife')" style="padding:10px 24px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;border-bottom:3px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-2px;transition:all .2s">
-    👩‍⚕️ WIFE
+    👩‍⚕️ RAJI
   </button>
   <div id="activePortfolioLabel" style="margin-left:16px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.08em">RAM'S PORTFOLIO · ₹2.00L/mo · Growth-Aggressive</div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
@@ -764,7 +764,7 @@ const STOCKS = [
   {id:10,sym:'NEULANDLAB',name:'Neuland Laboratories',cap:'X',idx:'MICROCAP',baseAmt:7500,day:23,status:'active',risk:7,sec:'Pharma API',sig:'BUY'},
 ];
 
-// ── WIFE'S PORTFOLIO — SteadyWealth · Conservative · ₹1L/mo
+// ── RAJI'S PORTFOLIO — SteadyWealth · Conservative · ₹1L/mo
 const STOCKS_WIFE = [
   {id:1,sym:'TCS',name:'Tata Consultancy Services',cap:'L',idx:'NSE50',baseAmt:18000,day:4,status:'active',risk:3,sec:'IT Services',sig:'ACCUMULATE'},
   {id:2,sym:'BHARTIARTL',name:'Bharti Airtel Ltd.',cap:'L',idx:'NSE50',baseAmt:15000,day:6,status:'active',risk:4,sec:'Telecom',sig:'BUY'},
@@ -1997,7 +1997,7 @@ function renderCorporateTab(){
 }
 
 function getTotalStats(){
-  const base=3000000;
+  const base = activePortfolio==='wife' ? 850000 : 3000000;
   let totalInvested=base,totalValue=base;
   getStocksArr().forEach(s=>{
     const st=getStockStats(s.sym);
@@ -2191,14 +2191,14 @@ function renderBigChart(){
   if(!canvas)return;
   if(bigChartInstance)bigChartInstance.destroy();
   if(getTxnLog().length===0){
-    bigChartInstance=new Chart(canvas,{type:'line',data:{labels:['Start'],datasets:[{label:'Portfolio Value',data:[3000000],borderColor:'#f0a830',borderWidth:2,pointRadius:4,fill:true,backgroundColor:'rgba(240,168,48,0.1)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5568'}},y:{ticks:{color:'#4a5568',callback:v=>'₹'+(v/1e5).toFixed(0)+'L'}}}}});
+    bigChartInstance=new Chart(canvas,{type:'line',data:{labels:['Start'],datasets:[{label:'Portfolio Value',data:[activePortfolio==='wife'?850000:3000000],borderColor:'#f0a830',borderWidth:2,pointRadius:4,fill:true,backgroundColor:'rgba(240,168,48,0.1)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5568'}},y:{ticks:{color:'#4a5568',callback:v=>'₹'+(v/1e5).toFixed(0)+'L'}}}}});
     return;
   }
   // Build chronological total value series
   const allDates=[...new Set(getTxnLog().map(t=>t.date))].sort();
   const labels=allDates.map(fmtDShort);
   const totalValues=allDates.map(d=>{
-    let val=3000000;
+    let val=activePortfolio==='wife'?850000:3000000;
     getStocksArr().forEach(s=>{
       const prevTxns=getTxnLog().filter(t=>t.sym===s.sym&&t.date<=d);
       if(!prevTxns.length)return;
@@ -2209,7 +2209,7 @@ function renderBigChart(){
     return val;
   });
   const investedValues=allDates.map(d=>{
-    let v=3000000;
+    let v=activePortfolio==='wife'?850000:3000000;
     getTxnLog().filter(t=>t.date<=d).forEach(t=>v+=t.amount);
     return v;
   });
@@ -2474,7 +2474,7 @@ async function switchPortfolio(p){
     : 'padding:10px 24px;font-family:\'JetBrains Mono\',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;border-bottom:3px solid transparent;color:var(--text3);cursor:pointer;margin-bottom:-2px;transition:all .2s';
   const lbl = document.getElementById('activePortfolioLabel');
   if(lbl) lbl.textContent = p==='wife'
-    ? `WIFE'S PORTFOLIO · ₹${(savedSip/1e5).toFixed(2)}L/mo · Conservative-Quality`
+    ? `RAJI'S PORTFOLIO · ₹${(savedSip/1e5).toFixed(2)}L/mo · Conservative-Quality`
     : `RAM'S PORTFOLIO · ₹${(savedSip/1e5).toFixed(2)}L/mo · Growth-Aggressive`;
   // Update logo subtitle
   document.querySelector('.logo-sub').textContent = p==='wife'
@@ -2486,7 +2486,7 @@ async function switchPortfolio(p){
   renderAll();
   renderPriceTicker();
   document.getElementById('alertFeed').innerHTML = '<div class="a-empty">Click "Scan All 10 Stocks" to get AI-powered alerts for every holding.</div>';
-  toast(`Switched to ${p==='wife'?"Wife's SteadyWealth Portfolio":"Ram's Growth Portfolio"}`,'success');
+  toast(`Switched to ${p==='wife'?"Raji's SteadyWealth Portfolio":"Ram's Growth Portfolio"}`,'success');
 }
 
 function updateFamilyCorpus(){
