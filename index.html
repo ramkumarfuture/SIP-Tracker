@@ -2072,7 +2072,7 @@ function renderSipTable(){
           <button class="bsm b-log" onclick="openLogModal('${s.sym}')">✏️ Log</button>
           <button class="bsm bn" onclick="checkOne('${s.sym}')">📡</button>
           <button class="bsm bp" onclick="toggleP(${s.id})">${s.status==='paused'?'▶':'⏸'}</button>
-          <button class="bsm br" onclick="openRep('${s.sym}')">↺</button>
+          <button class="bsm br" onclick="openRep('${s.sym}')" title="Replace stock">↺ REPLACE</button>
         </div>
       </td>`;
     tb.appendChild(tr);
