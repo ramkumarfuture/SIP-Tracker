@@ -866,9 +866,9 @@ let stocksWife = STOCKS_WIFE.map(s=>({...s, amt:s.baseAmt}));
 // Helpers — always returns data for the currently active portfolio
 function getStocksArr()    { return activePortfolio==='wife' ? stocksWife : stocks; }
 function getStockDefs()    { return activePortfolio==='wife' ? STOCKS_WIFE : STOCKS; }
-function getReps()         { return activePortfolio==='wife' ? REPS_WIFE : getReps(); }
-function getCtx()          { return activePortfolio==='wife' ? STOCK_CONTEXT_WIFE : getCtx(); }
-function getFallback()     { return activePortfolio==='wife' ? FALLBACK_WIFE : getFallback(); }
+function getReps()         { return activePortfolio==='wife' ? REPS_WIFE : REPS; }
+function getCtx()          { return activePortfolio==='wife' ? STOCK_CONTEXT_WIFE : STOCK_CONTEXT; }
+function getFallback()     { return activePortfolio==='wife' ? FALLBACK_WIFE : FALLBACK_ALL; }
 function getPriceDefaults(){ return activePortfolio==='wife' ? PRICE_DEFAULTS_WIFE : PRICE_DEFAULTS; }
 function getTxnKey()       { return activePortfolio==='wife' ? 'wifeSipTxns'  : 'ramSipTxns'; }
 function getCAKey()        { return activePortfolio==='wife' ? 'wifeCALog'    : 'ramCALog'; }
