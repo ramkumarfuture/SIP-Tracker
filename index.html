@@ -578,21 +578,24 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="form-group"><label>SIP Date</label>
         <input type="date" class="form-input" id="logDate">
       </div>
-      <div class="form-group"><label>Amount Paid (₹)</label>
-        <input type="number" class="form-input" id="logAmount" placeholder="e.g. 18000" oninput="updateLogCalc()">
-      </div>
       <div class="form-group"><label>Market Price Per Share (₹)</label>
         <input type="number" class="form-input" id="logPrice" placeholder="e.g. 1650.50" step="0.01" oninput="updateLogCalc()">
       </div>
-      <div class="form-group"><label>Total Qty Currently Held</label>
-        <input type="text" class="form-input" id="logQtyHeld" disabled style="opacity:.6;cursor:default" placeholder="Auto-calculated from your logs">
+      <div class="form-group"><label>Shares Bought</label>
+        <input type="number" class="form-input" id="logShares" placeholder="e.g. 14" step="1" min="1" oninput="updateLogCalc()">
+      </div>
+      <div class="form-group"><label>Amount Invested (₹) — Auto</label>
+        <input type="number" class="form-input" id="logAmount" placeholder="Auto-calculated" disabled style="opacity:.7;cursor:default" oninput="updateLogCalc()">
+      </div>
+      <div class="form-group"><label>Shares Already Held</label>
+        <input type="text" class="form-input" id="logQtyHeld" disabled style="opacity:.6;cursor:default" placeholder="Auto-filled from your logs">
       </div>
       <div class="form-group full"><label>Notes (optional)</label>
         <input type="text" class="form-input" id="logNotes" placeholder="e.g. Q3 results strong, added extra">
       </div>
       <div class="form-group full">
         <div class="calc-preview" id="logPreview">
-          Fill amount and price above to see units bought and average cost calculation.
+          Enter price and shares above to see calculation.
         </div>
       </div>
     </div>
@@ -1361,8 +1364,16 @@ setTimeout(checkReminders,3000);
 // ════════════════════════════════════════════
 // TRANSACTION LOG
 // ════════════════════════════════════════════
+function lastFridayOfMonth(d){
+  const dt = d ? new Date(d) : new Date();
+  const last = new Date(dt.getFullYear(), dt.getMonth()+1, 0); // last day of month
+  const dow = last.getDay(); // 0=Sun,5=Fri
+  const diff = dow >= 5 ? dow - 5 : dow + 2; // days to go back to Friday
+  last.setDate(last.getDate() - diff);
+  return last.toISOString().split('T')[0];
+}
+
 function openLogModal(preSelectSym=null){
-  // Populate stock dropdown
   const sel=document.getElementById('logSym');
   sel.innerHTML='<option value="">— Select Stock —</option>';
   getStocksArr().forEach(s=>{
@@ -1371,15 +1382,11 @@ function openLogModal(preSelectSym=null){
     if(preSelectSym&&s.sym===preSelectSym)opt.selected=true;
     sel.appendChild(opt);
   });
-  // Default date to today
-  const today=new Date().toISOString().split('T')[0];
-  document.getElementById('logDate').value=today;
-  // Default amount
-  if(preSelectSym){
-    const s=getStocksArr().find(x=>x.sym===preSelectSym);
-    if(s)document.getElementById('logAmount').value=s.amt;
-  }
+  // Default date to last Friday of current month
+  document.getElementById('logDate').value=lastFridayOfMonth();
   document.getElementById('logPrice').value='';
+  document.getElementById('logShares').value='';
+  document.getElementById('logAmount').value='';
   document.getElementById('logNotes').value='';
   updateLogCalc();
   openM('logModal');
@@ -1387,10 +1394,15 @@ function openLogModal(preSelectSym=null){
 
 function updateLogCalc(){
   const sym=document.getElementById('logSym').value;
-  const amount=parseFloat(document.getElementById('logAmount').value)||0;
   const price=parseFloat(document.getElementById('logPrice').value)||0;
+  const shares=parseFloat(document.getElementById('logShares').value)||0;
 
-  // Always update qty held when stock changes
+  // Auto-calculate amount = price × shares
+  const amount = price && shares ? Math.round(price * shares) : 0;
+  const amtEl = document.getElementById('logAmount');
+  if(price && shares){ amtEl.value = amount; } else { amtEl.value = ''; }
+
+  // Update shares already held
   const qtyEl = document.getElementById('logQtyHeld');
   if(sym && qtyEl){
     const adjUnits = getFullAdjustedUnits(sym);
@@ -1398,48 +1410,45 @@ function updateLogCalc(){
     const prevInvested = prevTxns.reduce((a,t)=>a+t.amount,0);
     const prevAvg = adjUnits>0&&prevInvested>0 ? prevInvested/adjUnits : 0;
     qtyEl.value = adjUnits>0
-      ? `${adjUnits.toFixed(4)} shares  (avg cost ₹${prevAvg.toFixed(2)})`
+      ? `${adjUnits.toFixed(0)} shares  (avg cost ₹${prevAvg.toFixed(2)})`
       : 'No shares yet — this will be your first purchase';
   }
 
-  if(!sym||!amount||!price){
-    document.getElementById('logPreview').innerHTML='Fill amount and price above to see calculation.';
+  if(!sym||!price||!shares){
+    document.getElementById('logPreview').innerHTML='Enter price and shares above to see calculation.';
     return;
   }
-  const units=amount/price;
-  const prevTxns=getTxnLog().filter(t=>t.sym===sym);
   const prevUnits=getFullAdjustedUnits(sym);
+  const prevTxns=getTxnLog().filter(t=>t.sym===sym);
   const prevInvested=prevTxns.reduce((a,t)=>a+t.amount,0);
-  const newTotalUnits=prevUnits+units;
+  const newTotalUnits=prevUnits+shares;
   const newAvg=(prevInvested+amount)/newTotalUnits;
   const prevAvg=prevUnits>0?prevInvested/prevUnits:0;
-  const liveP = getLivePrice(sym);
-  const currentVal = liveP ? (newTotalUnits*liveP) : null;
+  const liveP=getLivePrice(sym);
+  const currentVal=liveP?(newTotalUnits*liveP):null;
   document.getElementById('logPreview').innerHTML=
-    `<span>Units Buying Now:</span> ${units.toFixed(4)} shares @ ₹${price.toFixed(2)}<br>
-     <span>Amount:</span> ₹${amount.toLocaleString('en-IN')}<br>
-     ${prevUnits>0?`<span>Shares Held Before:</span> ${prevUnits.toFixed(4)} @ avg ₹${prevAvg.toFixed(2)}<br>`:''}
-     <span>Total Shares After:</span> <strong style="color:var(--gold2)">${newTotalUnits.toFixed(4)}</strong><br>
+    `<span>Buying Now:</span> ${shares} shares @ ₹${price.toLocaleString('en-IN')} = <strong style="color:var(--gold)">₹${amount.toLocaleString('en-IN')}</strong><br>
+     ${prevUnits>0?`<span>Shares Held Before:</span> ${prevUnits.toFixed(0)} @ avg ₹${prevAvg.toFixed(2)}<br>`:''}
+     <span>Total Shares After:</span> <strong style="color:var(--gold2)">${newTotalUnits.toFixed(0)}</strong><br>
      <span>New Average Cost:</span> <strong style="color:var(--gold)">₹${newAvg.toFixed(2)}</strong> per share
-     ${liveP?`<br><span>Current Market Value:</span> <strong style="color:var(--green)">₹${Math.round(currentVal).toLocaleString('en-IN')}</strong> @ live ₹${liveP}`:''}`;
+     ${liveP?`<br><span>Current Market Value:</span> <strong style="color:var(--green)">₹${Math.round(currentVal).toLocaleString('en-IN')}</strong>`:''}`;
 }
 
 function saveSipLog(){
   const sym=document.getElementById('logSym').value;
   const date=document.getElementById('logDate').value;
-  const amount=parseFloat(document.getElementById('logAmount').value);
   const price=parseFloat(document.getElementById('logPrice').value);
+  const shares=parseFloat(document.getElementById('logShares').value);
   const notes=document.getElementById('logNotes').value;
-  if(!sym||!date||!amount||!price){toast('Please fill all required fields','warning');return;}
-  const units=amount/price;
-  const txn={id:Date.now(),sym,date,amount,price,units,notes,currentPrice:price};
+  if(!sym||!date||!price||!shares){toast('Please fill stock, date, price and shares','warning');return;}
+  const amount=Math.round(price*shares);
+  const txn={id:Date.now(),sym,date,amount,price,units:shares,notes,currentPrice:price};
   getTxnLog().push(txn);
   saveTxns();
   closeM('logModal');
   playBeep('success');
-  toast(`✓ ${sym} SIP logged — ${units.toFixed(4)} units @ ₹${price.toFixed(2)}`,'success');
+  toast(`✓ ${sym} — ${shares} shares @ ₹${price.toFixed(2)} = ₹${amount.toLocaleString('en-IN')}`,'success');
   renderAll();
-  // Dismiss any active reminder for this stock
   if(reminderStock&&reminderStock.sym===sym){
     document.getElementById('reminderOverlay').classList.remove('active');
     reminderStock=null;
@@ -2038,44 +2047,90 @@ function renderStatStrip(){
   document.getElementById('sMonthSip').textContent=fmtRs(totalSip);
   // Next SIP
   let minDays=999,nextS=null;
-  getStocksArr().forEach(s=>{if(s.status!=='active')return;const d=daysUntil(nextDate(s.day));if(d<minDays){minDays=d;nextS=s;}});
-  if(nextS){
-    document.getElementById('sNextSip').textContent=nextS.sym;
-    document.getElementById('sNextSipSub').textContent=`${fmtD(nextDate(nextS.day))} · ₹${nextS.amt.toLocaleString('en-IN')}`;
+  const lf=lastFridayDate();
+  minDays=daysUntil(lf);
+  if(true){
+    document.getElementById('sNextSip').textContent='Last Friday SIP';
+    document.getElementById('sNextSipSub').textContent=`${fmtD(lf)} · ₹${(getDefaultSip()/1e5).toFixed(2)}L`;
   }
+}
+
+function lastFridayDate(){
+  const today=new Date();
+  const last=new Date(today.getFullYear(),today.getMonth()+1,0);
+  const dow=last.getDay();
+  const diff=dow>=5?dow-5:dow+2;
+  last.setDate(last.getDate()-diff);
+  return last;
 }
 
 function renderSipTable(){
   const tb=document.getElementById('sipBody');tb.innerHTML='';
-  getStocksArr().forEach((s,i)=>{
-    const nd=nextDate(s.day),days=daysUntil(nd);
+  const nextFri=lastFridayDate();
+  const days=daysUntil(nextFri);
+  const totalSip=getDefaultSip();
+  const isPortfolioRam=activePortfolio==='ram';
+  const label=isPortfolioRam?"RAM's Equity Portfolio":"RAJI's Equity Portfolio";
+  const desc=isPortfolioRam?"10 stocks · Nifty50 + Midcap + Smallcap":"10 stocks · Conservative-Quality";
+
+  // Count how many stocks logged this month
+  const monthKey=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+  const loggedThisMonth=getTxnLog().filter(t=>t.date&&t.date.startsWith(monthKey));
+  const loggedSyms=[...new Set(loggedThisMonth.map(t=>t.sym))];
+  const isDue=days<=0;
+  const isFullyLogged=loggedSyms.length>=getStocksArr().filter(s=>s.status==='active').length;
+
+  const tr=document.createElement('tr');
+  tr.innerHTML=`
+    <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">01</td>
+    <td>
+      <div class="t-sym">${label}</div>
+      <div class="t-nm">${desc}</div>
+      <div class="t-sc" style="color:var(--text3);margin-top:4px">Log each stock individually using the button →</div>
+    </td>
+    <td>—</td>
+    <td><div class="amt-c">₹${(totalSip/1e5).toFixed(2)}L</div><div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">per month</div></td>
+    <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">Last Friday</div></td>
+    <td>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${isDue?'var(--gold)':'var(--text2)'}">${fmtD(nextFri)}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${days<=3?'var(--gold)':'var(--text3)'}">${days<=0?'⚡ THIS FRIDAY':days+' days away'}</div>
+    </td>
+    <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">${loggedSyms.length}/${getStocksArr().filter(s=>s.status==='active').length} stocks</div><div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">logged this month</div></td>
+    <td>—</td>
+    <td><span class="status-pill ${isFullyLogged?'sp-a':isDue?'sp-due':'sp-a'}">${isFullyLogged?'✓ DONE':isDue?'⚡ LOG NOW':'● ACTIVE'}</span></td>
+    <td>—</td>
+    <td>
+      <button class="bsm b-log" onclick="openLogModal()">✏️ Log Stock</button>
+    </td>`;
+  tb.appendChild(tr);
+
+  // Show individual stock mini-list below
+  getStocksArr().filter(s=>s.status==='active').forEach(s=>{
+    const logged=loggedThisMonth.some(t=>t.sym===s.sym);
     const st=getStockStats(s.sym);
-    const isDue=days===0;
-    const isLogged=getTxnLog().some(t=>t.sym===s.sym&&dateKey(t.date)===todayKey());
-    const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">${String(i+1).padStart(2,'0')}</td>
-      <td><div class="t-sym">${s.sym}</div><div class="t-nm">${s.name}</div><div class="t-sc">${s.sec} · ${s.sig}</div></td>
+    const sub=document.createElement('tr');
+    sub.style.cssText='opacity:.75;';
+    sub.innerHTML=`
+      <td></td>
+      <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;padding-left:12px;border-left:2px solid ${logged?'var(--green)':'var(--text3)'}">
+        ${logged?'✓':''} <span style="color:${logged?'var(--green)':'var(--text2)'}">${s.sym}</span>
+        <span style="color:var(--text3);font-size:10px"> · ${s.name}</span>
+      </div></td>
       <td>${capTag(s.cap)}</td>
-      <td><div class="amt-c">₹${s.amt.toLocaleString('en-IN')}</div></td>
-      <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${s.day}th monthly</div></td>
-      <td>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${isDue?'var(--gold)':'var(--text2)'}">${fmtD(nd)}</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${days<=3?'var(--gold)':'var(--text3)'}">${days<=0?'⚡ TODAY':days+' days'}</div>
-      </td>
-      <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${st.avgCost>0?'var(--gold)':'var(--text3)'}">${st.avgCost>0?'₹'+st.avgCost.toFixed(2):'—'}</div></td>
-      <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${st.units>0?st.units.toFixed(4):'—'}</div></td>
-      <td><span class="status-pill ${isDue&&!isLogged?'sp-due':s.status==='active'?'sp-a':'sp-p'}">${isDue&&!isLogged?'⚡ DUE TODAY':s.status==='active'?'● ACTIVE':'⏸ PAUSED'}</span></td>
-      <td><span class="rn ${rCls(s.risk)}">${s.risk}</span></td>
+      <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">₹${s.amt.toLocaleString('en-IN')}</div></td>
+      <td></td>
+      <td><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${st.avgCost>0?'var(--gold)':'var(--text3)'}">${st.avgCost>0?'avg ₹'+st.avgCost.toFixed(2):'—'}</div></td>
+      <td><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${st.units>0?st.units.toFixed(0)+' shares':'—'}</div></td>
+      <td></td>
+      <td></td>
+      <td></td>
       <td>
         <div class="ab">
-          <button class="bsm b-log" onclick="openLogModal('${s.sym}')">✏️ Log</button>
-          <button class="bsm bn" onclick="checkOne('${s.sym}')">📡</button>
-          <button class="bsm bp" onclick="toggleP(${s.id})">${s.status==='paused'?'▶':'⏸'}</button>
-          <button class="bsm br" onclick="openRep('${s.sym}')" title="Replace stock">↺ REPLACE</button>
+          <button class="bsm ${logged?'':'b-log'}" onclick="openLogModal('${s.sym}')" style="${logged?'opacity:.5':''}">✏️</button>
+          <button class="bsm br" onclick="openRep('${s.sym}')" title="Replace">↺</button>
         </div>
       </td>`;
-    tb.appendChild(tr);
+    tb.appendChild(sub);
   });
 }
 
@@ -2565,19 +2620,19 @@ async function init() {
   setTimeout(()=>{ setEl('priceStatus','PRICES: REF DATA'); }, 2000);
   const lbl=document.getElementById('activePortfolioLabel');
   if(lbl) lbl.textContent=`RAM'S PORTFOLIO · ₹${(ramSip/1e5).toFixed(2)}L/mo · Growth-Aggressive`;
-  // SIP due alerts
+  // SIP due alert — last Friday of month
   setTimeout(()=>{
-    getStocksArr().forEach(s=>{
-      if(s.status!=='active')return;
-      const nd=nextDate(s.day);const days=daysUntil(nd);
-      if(days<=0){
-        const logged=getTxnLog().some(t=>t.sym===s.sym&&dateKey(t.date)===todayKey());
-        if(!logged){playBeep('sip');setTimeout(()=>toast(`⏰ SIP DUE: ${s.sym} — ₹${s.amt.toLocaleString('en-IN')} — click Log ✏️ after completing`,'warning'),500+s.id*300);}
-        else{toast(`✓ ${s.sym} SIP already logged today`,'success');}
-      } else if(days<=2){
-        setTimeout(()=>toast(`📅 ${s.sym} SIP due in ${days} day(s) — ₹${s.amt.toLocaleString('en-IN')}`,'warning'),1500+s.id*250);
-      }
-    });
+    const lf=lastFridayDate();
+    const days=daysUntil(lf);
+    const monthKey=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+    const loggedCount=new Set(getTxnLog().filter(t=>t.date&&t.date.startsWith(monthKey)).map(t=>t.sym)).size;
+    const activeCount=getStocksArr().filter(s=>s.status==='active').length;
+    if(days<=0 && loggedCount<activeCount){
+      playBeep('sip');
+      toast(`⏰ SIP DUE TODAY (${fmtD(lf)}) — ${loggedCount}/${activeCount} stocks logged — click ✏️ Log Stock`,'warning');
+    } else if(days<=2 && days>0){
+      toast(`📅 SIP due in ${days} day(s) on ${fmtD(lf)} — ₹${(getDefaultSip()/1e5).toFixed(2)}L`,'warning');
+    }
   },800);
 }
 
